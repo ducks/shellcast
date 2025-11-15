@@ -5,5 +5,7 @@ edition = "2024"
 
 [dependencies]
 atom_syndication = "0.12.7"
+crossterm = "0.29.0"
+ratatui = "0.29.0"
 reqwest = { version = "0.12.24", features = ["blocking"] }
 rss = { version = "2.0.12", features = ["atom"] }
