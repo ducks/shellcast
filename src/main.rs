@@ -1,9 +1,10 @@
 mod actions;
 mod app;
+mod feed;
 mod keybindings;
 mod ui;
 
-use app::App;
+use app::{App, InputMode};
 use actions::Action;
 use keybindings::{KeyMap, KeyBinding};
 
@@ -31,13 +32,53 @@ fn main() -> Result<()> {
         if event::poll(std::time::Duration::from_millis(200))?
             && let Event::Key(key) = event::read()?
         {
-            let binding = KeyBinding::new(key.code);
+            // Handle input mode separately
+            if app.input_mode == InputMode::AddingFeed {
+                use crossterm::event::KeyCode;
+                match key.code {
+                    KeyCode::Char(c) => {
+                        app.input_buffer.push(c);
+                    }
+                    KeyCode::Backspace => {
+                        app.input_buffer.pop();
+                    }
+                    KeyCode::Enter => {
+                        let url = app.input_buffer.clone();
+                        app.input_mode = InputMode::Normal;
+                        app.input_buffer.clear();
 
-            if let Some(action) = keymap.get_action(&binding) {
-                if matches!(action, Action::Quit) {
-                    break;
+                        // Fetch and parse feed
+                        match feed::fetch_and_parse(&url) {
+                            Ok(podcast) => {
+                                app.status_message = Some(format!("Added: {}", podcast.title));
+                                app.add_podcast(podcast);
+                            }
+                            Err(e) => {
+                                app.status_message = Some(format!("Error: {}", e));
+                            }
+                        }
+                    }
+                    KeyCode::Esc => {
+                        app.cancel_input();
+                    }
+                    _ => {}
                 }
-                action.execute(&mut app);
+            } else {
+                // Clear status message on any keypress
+                if app.status_message.is_some() {
+                    app.status_message = None;
+                    continue;
+                }
+
+                // Normal mode keybindings
+                let binding = KeyBinding::new(key.code);
+
+                if let Some(action) = keymap.get_action(&binding) {
+                    if matches!(action, Action::Quit) {
+                        break;
+                    }
+                    action.execute(&mut app);
+                }
             }
         }
     }

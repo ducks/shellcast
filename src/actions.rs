@@ -7,10 +7,13 @@ pub enum Action {
     MoveDown,
     GoToTop,
     GoToBottom,
-    
+
     // Focus
     SwitchFocus,
-    
+
+    // Feed Management
+    AddFeed,
+
     // Global
     Quit,
 }
@@ -53,6 +56,9 @@ impl Action {
             }
             Action::SwitchFocus => {
                 app.switch_focus();
+            }
+            Action::AddFeed => {
+                app.start_add_feed();
             }
         }
     }
