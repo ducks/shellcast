@@ -13,6 +13,7 @@ pub enum Action {
 
     // Feed Management
     AddFeed,
+    DeletePodcast,
 
     // Global
     Quit,
@@ -59,6 +60,9 @@ impl Action {
             }
             Action::AddFeed => {
                 app.start_add_feed();
+            }
+            Action::DeletePodcast => {
+                app.delete_podcast();
             }
         }
     }

@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Podcast {
     pub title: String,
     pub description: String,
@@ -8,14 +9,39 @@ pub struct Podcast {
     pub episodes: Vec<Episode>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Episode {
     pub title: String,
     pub description: String,
     pub published: String,
+    #[serde(with = "option_duration")]
     pub duration: Option<Duration>,
     pub audio_url: String,
     pub played: bool,
+}
+
+// Custom serialization for Option<Duration>
+mod option_duration {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match duration {
+            Some(d) => d.as_secs().serialize(serializer),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt: Option<u64> = Option::deserialize(deserializer)?;
+        Ok(opt.map(Duration::from_secs))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -193,5 +219,17 @@ impl App {
         self.podcasts.push(podcast);
         self.selected_podcast_index = self.podcasts.len() - 1;
         self.selected_episode_index = 0;
+    }
+
+    pub fn delete_podcast(&mut self) {
+        if !self.podcasts.is_empty() {
+            self.podcasts.remove(self.selected_podcast_index);
+
+            // Adjust selection after deletion
+            if self.selected_podcast_index >= self.podcasts.len() && self.selected_podcast_index > 0 {
+                self.selected_podcast_index -= 1;
+            }
+            self.selected_episode_index = 0;
+        }
     }
 }
