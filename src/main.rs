@@ -2,6 +2,7 @@ mod actions;
 mod app;
 mod feed;
 mod keybindings;
+mod persistence;
 mod ui;
 
 use app::{App, InputMode};
@@ -23,7 +24,15 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
 
-    let mut app = App::with_dummy_data();
+    // Load podcasts from file, or use empty app if none exist
+    let mut app = match persistence::load_podcasts() {
+        Ok(podcasts) => {
+            let mut app = App::new();
+            app.podcasts = podcasts;
+            app
+        }
+        Err(_) => App::new(),
+    };
     let keymap = KeyMap::with_defaults();
 
     loop {
@@ -52,6 +61,8 @@ fn main() -> Result<()> {
                             Ok(podcast) => {
                                 app.status_message = Some(format!("Added: {}", podcast.title));
                                 app.add_podcast(podcast);
+                                // Auto-save after adding
+                                let _ = persistence::save_podcasts(&app.podcasts);
                             }
                             Err(e) => {
                                 app.status_message = Some(format!("Error: {}", e));
@@ -78,6 +89,11 @@ fn main() -> Result<()> {
                         break;
                     }
                     action.execute(&mut app);
+
+                    // Auto-save after delete
+                    if matches!(action, Action::DeletePodcast) {
+                        let _ = persistence::save_podcasts(&app.podcasts);
+                    }
                 }
             }
         }
