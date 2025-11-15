@@ -1,5 +1,50 @@
-fn main() {
-    println!("Hello, shellcast!");
+mod actions;
+mod app;
+mod keybindings;
+mod ui;
+
+use app::App;
+use actions::Action;
+use keybindings::{KeyMap, KeyBinding};
+
+use crossterm::{
+    event::{self, Event},
+    execute,
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
+};
+use ratatui::{backend::CrosstermBackend, Terminal};
+use std::io::{Result, stdout};
+
+fn main() -> Result<()> {
+    enable_raw_mode()?;
+    execute!(stdout(), EnterAlternateScreen)?;
+
+    let backend = CrosstermBackend::new(stdout());
+    let mut terminal = Terminal::new(backend)?;
+
+    let mut app = App::with_dummy_data();
+    let keymap = KeyMap::with_defaults();
+
+    loop {
+        terminal.draw(|f| ui::draw_ui(f, &app))?;
+
+        if event::poll(std::time::Duration::from_millis(200))?
+            && let Event::Key(key) = event::read()?
+        {
+            let binding = KeyBinding::new(key.code);
+
+            if let Some(action) = keymap.get_action(&binding) {
+                if matches!(action, Action::Quit) {
+                    break;
+                }
+                action.execute(&mut app);
+            }
+        }
+    }
+
+    disable_raw_mode()?;
+    execute!(stdout(), LeaveAlternateScreen)?;
+    Ok(())
 }
 
 #[cfg(test)]
