@@ -1,8 +1,8 @@
-use crate::app::{App, PaneFocus};
+use crate::app::{App, InputMode, PaneFocus};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, List, ListItem},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
     Frame,
 };
 
@@ -14,6 +14,16 @@ pub fn draw_ui(frame: &mut Frame, app: &App) {
 
     draw_podcast_list(frame, app, chunks[0]);
     draw_episode_list(frame, app, chunks[1]);
+
+    // Draw input popup if in input mode
+    if app.input_mode == InputMode::AddingFeed {
+        draw_input_popup(frame, app);
+    }
+
+    // Draw status message if present
+    if let Some(msg) = &app.status_message {
+        draw_status_message(frame, msg);
+    }
 }
 
 fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
@@ -128,4 +138,57 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
         area,
         &mut ratatui::widgets::ListState::default().with_selected(Some(app.selected_episode_index)),
     );
+}
+
+fn draw_input_popup(frame: &mut Frame, app: &App) {
+    let area = centered_rect(60, 20, frame.area());
+
+    let block = Block::default()
+        .title("Add Feed (Enter to submit, Esc to cancel)")
+        .borders(Borders::ALL)
+        .style(Style::default().bg(Color::Black));
+
+    let input = Paragraph::new(app.input_buffer.as_str())
+        .block(block)
+        .style(Style::default().fg(Color::Yellow));
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(input, area);
+}
+
+fn draw_status_message(frame: &mut Frame, message: &str) {
+    let area = centered_rect(80, 10, frame.area());
+
+    let paragraph = Paragraph::new(message)
+        .block(
+            Block::default()
+                .title("Status")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::Black)),
+        )
+        .alignment(Alignment::Center)
+        .style(Style::default().fg(Color::Cyan));
+
+    frame.render_widget(Clear, area);
+    frame.render_widget(paragraph, area);
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }

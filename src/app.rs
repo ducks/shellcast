@@ -29,12 +29,21 @@ pub enum PaneFocus {
     Right, // Episode list
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InputMode {
+    Normal,
+    AddingFeed,
+}
+
 pub struct App {
     pub screen: AppScreen,
     pub podcasts: Vec<Podcast>,
     pub selected_podcast_index: usize,
     pub selected_episode_index: usize,
     pub focus: PaneFocus,
+    pub input_mode: InputMode,
+    pub input_buffer: String,
+    pub status_message: Option<String>,
 }
 
 impl App {
@@ -45,6 +54,9 @@ impl App {
             selected_podcast_index: 0,
             selected_episode_index: 0,
             focus: PaneFocus::Left,
+            input_mode: InputMode::Normal,
+            input_buffer: String::new(),
+            status_message: None,
         }
     }
 
@@ -164,5 +176,22 @@ impl App {
             PaneFocus::Left => PaneFocus::Right,
             PaneFocus::Right => PaneFocus::Left,
         };
+    }
+
+    pub fn start_add_feed(&mut self) {
+        self.input_mode = InputMode::AddingFeed;
+        self.input_buffer.clear();
+        self.status_message = None;
+    }
+
+    pub fn cancel_input(&mut self) {
+        self.input_mode = InputMode::Normal;
+        self.input_buffer.clear();
+    }
+
+    pub fn add_podcast(&mut self, podcast: Podcast) {
+        self.podcasts.push(podcast);
+        self.selected_podcast_index = self.podcasts.len() - 1;
+        self.selected_episode_index = 0;
     }
 }

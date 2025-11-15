@@ -58,6 +58,9 @@ impl KeyMap {
 
         // Focus
         self.bind(KeyBinding::new(KeyCode::Tab), Action::SwitchFocus);
+
+        // Feed Management
+        self.bind(KeyBinding::new(KeyCode::Char('a')), Action::AddFeed);
     }
 }
 
