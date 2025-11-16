@@ -5,15 +5,19 @@ use tempfile::NamedTempFile;
 pub struct Player {
     temp_file: Option<NamedTempFile>,
     sink: Option<rodio::Sink>,
-    _stream_handle: Option<rodio::OutputStream>,
+    stream_handle: rodio::OutputStream,
 }
 
 impl Player {
     pub fn new() -> Result<Self, String> {
+        // Create the output stream once at initialization
+        let stream_handle = rodio::OutputStreamBuilder::open_default_stream()
+            .map_err(|e| format!("Failed to open audio stream: {}", e))?;
+
         Ok(Self {
             temp_file: None,
             sink: None,
-            _stream_handle: None,
+            stream_handle,
         })
     }
 
@@ -49,14 +53,10 @@ impl Player {
         let source = rodio::Decoder::new(std::io::BufReader::new(file))
             .map_err(|e| format!("Failed to decode audio: {}", e))?;
 
-        // Create output stream and sink
-        let stream_handle = rodio::OutputStreamBuilder::open_default_stream()
-            .map_err(|e| format!("Failed to open audio stream: {}", e))?;
-
-        let sink = rodio::Sink::connect_new(&stream_handle.mixer());
+        // Create sink using existing stream
+        let sink = rodio::Sink::connect_new(&self.stream_handle.mixer());
         sink.append(source);
 
-        self._stream_handle = Some(stream_handle);
         self.sink = Some(sink);
         self.temp_file = Some(temp_file);
 
@@ -79,7 +79,7 @@ impl Player {
         if let Some(sink) = self.sink.take() {
             sink.stop();
         }
-        self._stream_handle = None;
+        // Keep stream_handle alive, only drop sink and temp file
         self.temp_file = None;
     }
 

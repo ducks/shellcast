@@ -81,10 +81,7 @@ fn main() -> Result<()> {
                 }
             } else {
                 // Clear status message on any keypress
-                if app.status_message.is_some() {
-                    app.status_message = None;
-                    continue;
-                }
+                app.status_message = None;
 
                 // Normal mode keybindings
                 let binding = KeyBinding::new(key.code);
@@ -97,35 +94,56 @@ fn main() -> Result<()> {
                     // Handle playback actions
                     match action {
                         Action::PlayPause => {
-                            if player.is_playing() || player.is_paused() {
-                                if player.is_paused() {
-                                    player.resume();
-                                } else {
-                                    player.pause();
+                            let selected_url = app.selected_episode_url();
+                            let is_different_episode = selected_url.as_ref() != app.currently_playing_url.as_ref();
+
+                            // If user selected a different episode, stop current and play new one
+                            if is_different_episode || (!player.is_playing() && !player.is_paused()) {
+                                // Get episode info before borrowing
+                                let episode_info = app.selected_podcast()
+                                    .and_then(|p| p.episodes.get(app.selected_episode_index))
+                                    .map(|e| (e.audio_url.clone(), e.title.clone()));
+
+                                if let Some((audio_url, title)) = episode_info {
+                                    if !audio_url.is_empty() {
+                                        match player.play(&audio_url) {
+                                            Ok(_) => {
+                                                app.status_message = Some(format!("Playing: {}", title));
+                                                app.currently_playing_url = Some(audio_url);
+                                            }
+                                            Err(e) => {
+                                                app.status_message = Some(format!("Error: {}", e));
+                                                app.currently_playing_url = None;
+                                            }
+                                        }
+                                    } else {
+                                        app.status_message = Some("No audio URL for this episode".to_string());
+                                    }
+                                }
+                            } else if player.is_paused() {
+                                // Resume current episode
+                                player.resume();
+                                let title = app.selected_podcast()
+                                    .and_then(|p| p.episodes.get(app.selected_episode_index))
+                                    .map(|e| e.title.clone());
+                                if let Some(title) = title {
+                                    app.status_message = Some(format!("Resumed: {}", title));
                                 }
                             } else {
-                                // Start playing selected episode
-                                if let Some(podcast) = app.selected_podcast() {
-                                    if let Some(episode) = podcast.episodes.get(app.selected_episode_index) {
-                                        if !episode.audio_url.is_empty() {
-                                            match player.play(&episode.audio_url) {
-                                                Ok(_) => {
-                                                    app.status_message = Some(format!("Playing: {}", episode.title));
-                                                }
-                                                Err(e) => {
-                                                    app.status_message = Some(format!("Error: {}", e));
-                                                }
-                                            }
-                                        } else {
-                                            app.status_message = Some("No audio URL for this episode".to_string());
-                                        }
-                                    }
+                                // Pause current episode
+                                player.pause();
+                                let title = app.selected_podcast()
+                                    .and_then(|p| p.episodes.get(app.selected_episode_index))
+                                    .map(|e| e.title.clone());
+                                if let Some(title) = title {
+                                    app.status_message = Some(format!("Paused: {}", title));
                                 }
                             }
                         }
                         Action::Stop => {
                             player.stop();
                             app.status_message = Some("Stopped".to_string());
+                            app.currently_playing_url = None;
                         }
                         _ => {
                             action.execute(&mut app);
