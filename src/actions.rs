@@ -24,6 +24,14 @@ pub enum Action {
     SeekForward,
     SeekBackward,
 
+    // Screen/Mode
+    SwitchToBrowse,
+    SwitchToPodcasts,
+
+    // Browse
+    StartSearch,
+    SubscribeFromBrowse,
+
     // Global
     Quit,
 }
@@ -35,15 +43,25 @@ impl Action {
                 // Handled in main loop
             }
             Action::MoveUp => {
-                match app.focus {
-                    crate::app::PaneFocus::Left => app.move_podcast_up(),
-                    crate::app::PaneFocus::Right => app.move_episode_up(),
+                match app.screen {
+                    crate::app::AppScreen::Browse => app.browse.move_up(),
+                    crate::app::AppScreen::Podcasts => {
+                        match app.focus {
+                            crate::app::PaneFocus::Left => app.move_podcast_up(),
+                            crate::app::PaneFocus::Right => app.move_episode_up(),
+                        }
+                    }
                 }
             }
             Action::MoveDown => {
-                match app.focus {
-                    crate::app::PaneFocus::Left => app.move_podcast_down(),
-                    crate::app::PaneFocus::Right => app.move_episode_down(),
+                match app.screen {
+                    crate::app::AppScreen::Browse => app.browse.move_down(),
+                    crate::app::AppScreen::Podcasts => {
+                        match app.focus {
+                            crate::app::PaneFocus::Left => app.move_podcast_down(),
+                            crate::app::PaneFocus::Right => app.move_episode_down(),
+                        }
+                    }
                 }
             }
             Action::GoToTop => {
@@ -87,6 +105,18 @@ impl Action {
             }
             Action::SeekBackward => {
                 // Handled in main loop (needs player reference)
+            }
+            Action::SwitchToBrowse => {
+                app.screen = crate::app::AppScreen::Browse;
+            }
+            Action::SwitchToPodcasts => {
+                app.screen = crate::app::AppScreen::Podcasts;
+            }
+            Action::StartSearch => {
+                app.start_search();
+            }
+            Action::SubscribeFromBrowse => {
+                // Handled in main loop (needs feed fetching)
             }
         }
     }

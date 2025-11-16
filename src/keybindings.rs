@@ -46,6 +46,10 @@ impl KeyMap {
         // Global
         self.bind(KeyBinding::new(KeyCode::Char('q')), Action::Quit);
 
+        // Screen switching (like cmus)
+        self.bind(KeyBinding::new(KeyCode::Char('1')), Action::SwitchToPodcasts);
+        self.bind(KeyBinding::new(KeyCode::Char('5')), Action::SwitchToBrowse);
+
         // Navigation - Arrow keys
         self.bind(KeyBinding::new(KeyCode::Up), Action::MoveUp);
         self.bind(KeyBinding::new(KeyCode::Down), Action::MoveDown);

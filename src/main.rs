@@ -1,5 +1,6 @@
 mod actions;
 mod app;
+mod browse;
 mod feed;
 mod keybindings;
 mod persistence;
@@ -43,7 +44,7 @@ fn main() -> Result<()> {
     loop {
         terminal.draw(|f| ui::draw_ui(f, &app, &player))?;
 
-        if event::poll(std::time::Duration::from_millis(200))?
+        if event::poll(std::time::Duration::from_millis(50))?
             && let Event::Key(key) = event::read()?
         {
             // Handle input mode separately
@@ -79,9 +80,70 @@ fn main() -> Result<()> {
                     }
                     _ => {}
                 }
+            } else if app.input_mode == InputMode::Searching {
+                use crossterm::event::KeyCode;
+                match key.code {
+                    KeyCode::Char(c) => {
+                        app.browse.search_query.push(c);
+                    }
+                    KeyCode::Backspace => {
+                        app.browse.search_query.pop();
+                    }
+                    KeyCode::Enter => {
+                        let query = app.browse.search_query.clone();
+                        app.cancel_search();
+
+                        // Perform search
+                        match browse::search_podcasts(&query) {
+                            Ok(results) => {
+                                app.browse.search_results = results;
+                                app.browse.selected_index = 0;
+                                app.status_message = Some(format!("Found {} podcasts", app.browse.search_results.len()));
+                            }
+                            Err(e) => {
+                                app.status_message = Some(format!("Search error: {}", e));
+                            }
+                        }
+                    }
+                    KeyCode::Esc => {
+                        app.cancel_search();
+                    }
+                    _ => {}
+                }
             } else {
                 // Clear status message on any keypress
                 app.status_message = None;
+
+                use crossterm::event::KeyCode;
+
+                // Handle browse-specific keys
+                if app.screen == app::AppScreen::Browse {
+                    match key.code {
+                        KeyCode::Char('/') => {
+                            app.start_search();
+                            continue;
+                        }
+                        KeyCode::Enter => {
+                            // Subscribe to selected podcast
+                            if let Some(result) = app.browse.selected_result() {
+                                let feed_url = result.feed_url.clone();
+                                match feed::fetch_and_parse(&feed_url) {
+                                    Ok(podcast) => {
+                                        app.status_message = Some(format!("Subscribed: {}", podcast.title));
+                                        app.add_podcast(podcast);
+                                        let _ = persistence::save_podcasts(&app.podcasts);
+                                        app.screen = app::AppScreen::Podcasts;
+                                    }
+                                    Err(e) => {
+                                        app.status_message = Some(format!("Error: {}", e));
+                                    }
+                                }
+                            }
+                            continue;
+                        }
+                        _ => {}
+                    }
+                }
 
                 // Normal mode keybindings
                 let binding = KeyBinding::new(key.code);
