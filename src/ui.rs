@@ -7,13 +7,22 @@ use ratatui::{
 };
 
 pub fn draw_ui(frame: &mut Frame, app: &App) {
+    let main_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(1),    // Main content
+            Constraint::Length(2), // Footer
+        ])
+        .split(frame.area());
+
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-        .split(frame.area());
+        .split(main_layout[0]);
 
     draw_podcast_list(frame, app, chunks[0]);
     draw_episode_list(frame, app, chunks[1]);
+    draw_footer(frame, app, main_layout[1]);
 
     // Draw input popup if in input mode
     if app.input_mode == InputMode::AddingFeed {
@@ -171,6 +180,37 @@ fn draw_status_message(frame: &mut Frame, message: &str) {
 
     frame.render_widget(Clear, area);
     frame.render_widget(paragraph, area);
+}
+
+fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
+    let block = Block::default().borders(Borders::TOP);
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    let footer_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(70),
+            Constraint::Percentage(30),
+        ])
+        .split(inner);
+
+    // Left side: keybindings
+    let keybindings = "j/k: Navigate | Tab: Switch pane | Space: Play/Pause | s: Stop | a: Add | d: Delete | q: Quit";
+    let keybindings_widget = Paragraph::new(keybindings)
+        .style(Style::default().fg(Color::DarkGray));
+    frame.render_widget(keybindings_widget, footer_layout[0]);
+
+    // Right side: playing status
+    if let Some(podcast) = app.selected_podcast() {
+        if let Some(episode) = podcast.episodes.get(app.selected_episode_index) {
+            let status_text = format!("♫ {}", episode.title);
+            let status_widget = Paragraph::new(status_text)
+                .alignment(Alignment::Right)
+                .style(Style::default().fg(Color::Cyan));
+            frame.render_widget(status_widget, footer_layout[1]);
+        }
+    }
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
