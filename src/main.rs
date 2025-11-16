@@ -41,7 +41,7 @@ fn main() -> Result<()> {
     let mut player = Player::new().expect("Failed to initialize audio player");
 
     loop {
-        terminal.draw(|f| ui::draw_ui(f, &app))?;
+        terminal.draw(|f| ui::draw_ui(f, &app, &player))?;
 
         if event::poll(std::time::Duration::from_millis(200))?
             && let Event::Key(key) = event::read()?
@@ -102,18 +102,25 @@ fn main() -> Result<()> {
                                 // Get episode info before borrowing
                                 let episode_info = app.selected_podcast()
                                     .and_then(|p| p.episodes.get(app.selected_episode_index))
-                                    .map(|e| (e.audio_url.clone(), e.title.clone()));
+                                    .map(|e| (e.audio_url.clone(), e.title.clone(), e.duration));
 
-                                if let Some((audio_url, title)) = episode_info {
+                                if let Some((audio_url, title, duration)) = episode_info {
                                     if !audio_url.is_empty() {
                                         match player.play(&audio_url) {
                                             Ok(_) => {
                                                 app.status_message = Some(format!("Playing: {}", title));
                                                 app.currently_playing_url = Some(audio_url);
+
+                                                // Start playback tracking
+                                                app.playback_start = Some(std::time::Instant::now());
+                                                app.playback_duration = duration.map(|d| d.as_secs()).unwrap_or(0);
+                                                app.paused_at = None;
+                                                app.paused_duration = std::time::Duration::ZERO;
                                             }
                                             Err(e) => {
                                                 app.status_message = Some(format!("Error: {}", e));
                                                 app.currently_playing_url = None;
+                                                app.playback_start = None;
                                             }
                                         }
                                     } else {
@@ -129,6 +136,12 @@ fn main() -> Result<()> {
                                 if let Some(title) = title {
                                     app.status_message = Some(format!("Resumed: {}", title));
                                 }
+
+                                // Resume playback tracking
+                                if let Some(paused_at) = app.paused_at {
+                                    app.paused_duration += std::time::Instant::now().duration_since(paused_at);
+                                    app.paused_at = None;
+                                }
                             } else {
                                 // Pause current episode
                                 player.pause();
@@ -138,12 +151,44 @@ fn main() -> Result<()> {
                                 if let Some(title) = title {
                                     app.status_message = Some(format!("Paused: {}", title));
                                 }
+
+                                // Mark pause time
+                                app.paused_at = Some(std::time::Instant::now());
                             }
                         }
                         Action::Stop => {
                             player.stop();
                             app.status_message = Some("Stopped".to_string());
                             app.currently_playing_url = None;
+
+                            // Clear playback tracking
+                            app.playback_start = None;
+                            app.paused_at = None;
+                            app.paused_duration = std::time::Duration::ZERO;
+                        }
+                        Action::SeekForward => {
+                            if app.playback_start.is_some() {
+                                match player.seek_forward(30) {
+                                    Ok(_) => {
+                                        app.status_message = Some("⏩ +30s".to_string());
+                                    }
+                                    Err(e) => {
+                                        app.status_message = Some(format!("Seek error: {}", e));
+                                    }
+                                }
+                            }
+                        }
+                        Action::SeekBackward => {
+                            if app.playback_start.is_some() {
+                                match player.seek_backward(30) {
+                                    Ok(_) => {
+                                        app.status_message = Some("⏪ -30s".to_string());
+                                    }
+                                    Err(e) => {
+                                        app.status_message = Some(format!("Seek error: {}", e));
+                                    }
+                                }
+                            }
                         }
                         _ => {
                             action.execute(&mut app);

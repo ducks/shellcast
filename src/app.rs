@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Podcast {
@@ -71,6 +71,12 @@ pub struct App {
     pub input_buffer: String,
     pub status_message: Option<String>,
     pub currently_playing_url: Option<String>,
+
+    // Playback tracking
+    pub playback_duration: u64,      // Total duration in seconds
+    pub playback_start: Option<Instant>,
+    pub paused_at: Option<Instant>,
+    pub paused_duration: Duration,
 }
 
 impl App {
@@ -85,6 +91,10 @@ impl App {
             input_buffer: String::new(),
             status_message: None,
             currently_playing_url: None,
+            playback_duration: 0,
+            playback_start: None,
+            paused_at: None,
+            paused_duration: Duration::ZERO,
         }
     }
 
