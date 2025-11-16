@@ -68,10 +68,19 @@ jobs:
         with:
           path: artifacts
 
+      - name: Prepare release binaries
+        run: |
+          mkdir -p release
+          for dir in artifacts/*/; do
+            artifact_name=$(basename "$dir")
+            mv "$dir/shellcast" "release/$artifact_name"
+          done
+          ls -la release/
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/*/*
+          files: release/*
           draft: false
           prerelease: false
         env:
