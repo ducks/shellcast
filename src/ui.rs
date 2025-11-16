@@ -1,4 +1,4 @@
-use crate::app::{App, InputMode, PaneFocus};
+use crate::app::{App, AppScreen, InputMode, PaneFocus};
 use crate::playback::Player;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
@@ -16,14 +16,26 @@ pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player) {
         ])
         .split(frame.area());
 
+    match app.screen {
+        AppScreen::Podcasts => {
+            draw_podcasts_screen(frame, app, main_layout[0]);
+        }
+        AppScreen::Browse => {
+            draw_browse_screen(frame, app, main_layout[0]);
+        }
+    }
+
+    draw_footer(frame, app, player, main_layout[1]);
+}
+
+fn draw_podcasts_screen(frame: &mut Frame, app: &App, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
-        .split(main_layout[0]);
+        .split(area);
 
     draw_podcast_list(frame, app, chunks[0]);
     draw_episode_list(frame, app, chunks[1]);
-    draw_footer(frame, app, player, main_layout[1]);
 }
 
 fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
@@ -137,6 +149,68 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
         list,
         area,
         &mut ratatui::widgets::ListState::default().with_selected(Some(app.selected_episode_index)),
+    );
+}
+
+fn draw_browse_screen(frame: &mut Frame, app: &App, area: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3), // Search box
+            Constraint::Min(1),     // Results list
+        ])
+        .split(area);
+
+    // Search box
+    let search_block = Block::default()
+        .title("Search Podcasts (gpodder.net)")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let search_text = if app.browse.is_searching {
+        format!("Search: {}█", app.browse.search_query)
+    } else {
+        format!("Search: {} (Press '/' to search)", app.browse.search_query)
+    };
+
+    let search_para = Paragraph::new(search_text)
+        .block(search_block);
+    frame.render_widget(search_para, chunks[0]);
+
+    // Results list
+    let items: Vec<ListItem> = app.browse.search_results
+        .iter()
+        .map(|result| {
+            let subs_text = if result.subscribers > 0 {
+                format!(" ({} subs)", result.subscribers)
+            } else {
+                String::new()
+            };
+            let title = format!("▸ {}{}", result.title, subs_text);
+            let author = format!("  by {}", result.author);
+            let content = format!("{}\n{}", title, author);
+            ListItem::new(content)
+        })
+        .collect();
+
+    let results_list = List::new(items)
+        .block(
+            Block::default()
+                .title(format!("Results ({})", app.browse.search_results.len()))
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Cyan)),
+        )
+        .highlight_symbol("➤ ")
+        .highlight_style(
+            Style::default()
+                .bg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        );
+
+    frame.render_stateful_widget(
+        results_list,
+        chunks[1],
+        &mut ratatui::widgets::ListState::default().with_selected(Some(app.browse.selected_index)),
     );
 }
 

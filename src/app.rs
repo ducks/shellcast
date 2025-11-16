@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
+use crate::browse::BrowseState;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Podcast {
@@ -47,6 +48,7 @@ mod option_duration {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AppScreen {
     Podcasts,
+    Browse,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,6 +61,7 @@ pub enum PaneFocus {
 pub enum InputMode {
     Normal,
     AddingFeed,
+    Searching,
 }
 
 pub struct App {
@@ -77,6 +80,9 @@ pub struct App {
     pub playback_start: Option<Instant>,
     pub paused_at: Option<Instant>,
     pub paused_duration: Duration,
+
+    // Browse state
+    pub browse: BrowseState,
 }
 
 impl App {
@@ -95,6 +101,7 @@ impl App {
             playback_start: None,
             paused_at: None,
             paused_duration: Duration::ZERO,
+            browse: BrowseState::new(),
         }
     }
 
@@ -257,5 +264,16 @@ impl App {
                 episode.played = !episode.played;
             }
         }
+    }
+
+    pub fn start_search(&mut self) {
+        self.input_mode = InputMode::Searching;
+        self.browse.is_searching = true;
+        self.browse.search_query.clear();
+    }
+
+    pub fn cancel_search(&mut self) {
+        self.input_mode = InputMode::Normal;
+        self.browse.is_searching = false;
     }
 }
