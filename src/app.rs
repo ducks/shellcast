@@ -232,4 +232,12 @@ impl App {
             self.selected_episode_index = 0;
         }
     }
+
+    pub fn toggle_played(&mut self) {
+        if let Some(podcast) = self.podcasts.get_mut(self.selected_podcast_index) {
+            if let Some(episode) = podcast.episodes.get_mut(self.selected_episode_index) {
+                episode.played = !episode.played;
+            }
+        }
+    }
 }

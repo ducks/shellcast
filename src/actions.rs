@@ -15,6 +15,9 @@ pub enum Action {
     AddFeed,
     DeletePodcast,
 
+    // Episode Management
+    TogglePlayed,
+
     // Playback
     PlayPause,
     Stop,
@@ -67,6 +70,9 @@ impl Action {
             }
             Action::DeletePodcast => {
                 app.delete_podcast();
+            }
+            Action::TogglePlayed => {
+                app.toggle_played();
             }
             Action::PlayPause => {
                 // Handled in main loop (needs player reference)
