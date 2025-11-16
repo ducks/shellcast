@@ -130,8 +130,8 @@ fn main() -> Result<()> {
                         _ => {
                             action.execute(&mut app);
 
-                            // Auto-save after delete
-                            if matches!(action, Action::DeletePodcast) {
+                            // Auto-save after delete or toggle played
+                            if matches!(action, Action::DeletePodcast | Action::TogglePlayed) {
                                 let _ = persistence::save_podcasts(&app.podcasts);
                             }
                         }

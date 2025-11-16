@@ -196,7 +196,7 @@ fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
         .split(inner);
 
     // Left side: keybindings
-    let keybindings = "j/k: Navigate | Tab: Switch pane | Space: Play/Pause | s: Stop | a: Add | d: Delete | q: Quit";
+    let keybindings = "j/k: Navigate | Tab: Switch | Space: Play | s: Stop | m: Mark | a: Add | d: Delete | q: Quit";
     let keybindings_widget = Paragraph::new(keybindings)
         .style(Style::default().fg(Color::DarkGray));
     frame.render_widget(keybindings_widget, footer_layout[0]);
