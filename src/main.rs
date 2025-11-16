@@ -3,11 +3,13 @@ mod app;
 mod feed;
 mod keybindings;
 mod persistence;
+mod playback;
 mod ui;
 
 use app::{App, InputMode};
 use actions::Action;
 use keybindings::{KeyMap, KeyBinding};
+use playback::Player;
 
 use crossterm::{
     event::{self, Event},
@@ -34,6 +36,9 @@ fn main() -> Result<()> {
         Err(_) => App::new(),
     };
     let keymap = KeyMap::with_defaults();
+
+    // Initialize audio player
+    let mut player = Player::new().expect("Failed to initialize audio player");
 
     loop {
         terminal.draw(|f| ui::draw_ui(f, &app))?;
@@ -88,11 +93,48 @@ fn main() -> Result<()> {
                     if matches!(action, Action::Quit) {
                         break;
                     }
-                    action.execute(&mut app);
 
-                    // Auto-save after delete
-                    if matches!(action, Action::DeletePodcast) {
-                        let _ = persistence::save_podcasts(&app.podcasts);
+                    // Handle playback actions
+                    match action {
+                        Action::PlayPause => {
+                            if player.is_playing() || player.is_paused() {
+                                if player.is_paused() {
+                                    player.resume();
+                                } else {
+                                    player.pause();
+                                }
+                            } else {
+                                // Start playing selected episode
+                                if let Some(podcast) = app.selected_podcast() {
+                                    if let Some(episode) = podcast.episodes.get(app.selected_episode_index) {
+                                        if !episode.audio_url.is_empty() {
+                                            match player.play(&episode.audio_url) {
+                                                Ok(_) => {
+                                                    app.status_message = Some(format!("Playing: {}", episode.title));
+                                                }
+                                                Err(e) => {
+                                                    app.status_message = Some(format!("Error: {}", e));
+                                                }
+                                            }
+                                        } else {
+                                            app.status_message = Some("No audio URL for this episode".to_string());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Action::Stop => {
+                            player.stop();
+                            app.status_message = Some("Stopped".to_string());
+                        }
+                        _ => {
+                            action.execute(&mut app);
+
+                            // Auto-save after delete
+                            if matches!(action, Action::DeletePodcast) {
+                                let _ = persistence::save_podcasts(&app.podcasts);
+                            }
+                        }
                     }
                 }
             }

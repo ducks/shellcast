@@ -15,6 +15,10 @@ pub enum Action {
     AddFeed,
     DeletePodcast,
 
+    // Playback
+    PlayPause,
+    Stop,
+
     // Global
     Quit,
 }
@@ -63,6 +67,12 @@ impl Action {
             }
             Action::DeletePodcast => {
                 app.delete_podcast();
+            }
+            Action::PlayPause => {
+                // Handled in main loop (needs player reference)
+            }
+            Action::Stop => {
+                // Handled in main loop (needs player reference)
             }
         }
     }
