@@ -70,6 +70,7 @@ pub struct App {
     pub input_mode: InputMode,
     pub input_buffer: String,
     pub status_message: Option<String>,
+    pub currently_playing_url: Option<String>,
 }
 
 impl App {
@@ -83,6 +84,7 @@ impl App {
             input_mode: InputMode::Normal,
             input_buffer: String::new(),
             status_message: None,
+            currently_playing_url: None,
         }
     }
 
@@ -169,6 +171,12 @@ impl App {
         self.podcasts.get(self.selected_podcast_index)
     }
 
+    pub fn selected_episode_url(&self) -> Option<String> {
+        self.selected_podcast()
+            .and_then(|p| p.episodes.get(self.selected_episode_index))
+            .map(|e| e.audio_url.clone())
+    }
+
     pub fn move_podcast_up(&mut self) {
         if self.selected_podcast_index > 0 {
             self.selected_podcast_index -= 1;
@@ -207,7 +215,7 @@ impl App {
     pub fn start_add_feed(&mut self) {
         self.input_mode = InputMode::AddingFeed;
         self.input_buffer.clear();
-        self.status_message = None;
+        self.status_message = None; // Clear any existing status messages
     }
 
     pub fn cancel_input(&mut self) {

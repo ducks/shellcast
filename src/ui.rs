@@ -1,8 +1,8 @@
 use crate::app::{App, InputMode, PaneFocus};
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
 
@@ -11,7 +11,7 @@ pub fn draw_ui(frame: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(1),    // Main content
-            Constraint::Length(2), // Footer
+            Constraint::Length(4), // Footer (border + status + keybindings + padding)
         ])
         .split(frame.area());
 
@@ -23,16 +23,6 @@ pub fn draw_ui(frame: &mut Frame, app: &App) {
     draw_podcast_list(frame, app, chunks[0]);
     draw_episode_list(frame, app, chunks[1]);
     draw_footer(frame, app, main_layout[1]);
-
-    // Draw input popup if in input mode
-    if app.input_mode == InputMode::AddingFeed {
-        draw_input_popup(frame, app);
-    }
-
-    // Draw status message if present
-    if let Some(msg) = &app.status_message {
-        draw_status_message(frame, msg);
-    }
 }
 
 fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
@@ -149,86 +139,38 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_input_popup(frame: &mut Frame, app: &App) {
-    let area = centered_rect(60, 20, frame.area());
-
-    let block = Block::default()
-        .title("Add Feed (Enter to submit, Esc to cancel)")
-        .borders(Borders::ALL)
-        .style(Style::default().bg(Color::Black));
-
-    let input = Paragraph::new(app.input_buffer.as_str())
-        .block(block)
-        .style(Style::default().fg(Color::Yellow));
-
-    frame.render_widget(Clear, area);
-    frame.render_widget(input, area);
-}
-
-fn draw_status_message(frame: &mut Frame, message: &str) {
-    let area = centered_rect(80, 10, frame.area());
-
-    let paragraph = Paragraph::new(message)
-        .block(
-            Block::default()
-                .title("Status")
-                .borders(Borders::ALL)
-                .style(Style::default().bg(Color::Black)),
-        )
-        .alignment(Alignment::Center)
-        .style(Style::default().fg(Color::Cyan));
-
-    frame.render_widget(Clear, area);
-    frame.render_widget(paragraph, area);
-}
-
 fn draw_footer(frame: &mut Frame, app: &App, area: Rect) {
     let block = Block::default().borders(Borders::TOP);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     let footer_layout = Layout::default()
-        .direction(Direction::Horizontal)
+        .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(70),
-            Constraint::Percentage(30),
+            Constraint::Length(1), // Status message line
+            Constraint::Length(1), // Keybindings line
+            Constraint::Min(0),    // Remaining space
         ])
         .split(inner);
 
-    // Left side: keybindings
-    let keybindings = "j/k: Navigate | Tab: Switch | Space: Play | s: Stop | m: Mark | a: Add | d: Delete | q: Quit";
-    let keybindings_widget = Paragraph::new(keybindings)
-        .style(Style::default().fg(Color::DarkGray));
-    frame.render_widget(keybindings_widget, footer_layout[0]);
-
-    // Right side: playing status
-    if let Some(podcast) = app.selected_podcast() {
-        if let Some(episode) = podcast.episodes.get(app.selected_episode_index) {
-            let status_text = format!("♫ {}", episode.title);
-            let status_widget = Paragraph::new(status_text)
-                .alignment(Alignment::Right)
-                .style(Style::default().fg(Color::Cyan));
-            frame.render_widget(status_widget, footer_layout[1]);
-        }
+    // Line 1: Status message or input prompt
+    if app.input_mode == InputMode::AddingFeed {
+        let text = format!("Add Feed: {}", app.input_buffer);
+        frame.render_widget(
+            Paragraph::new(text).style(Style::default().fg(Color::Yellow)),
+            footer_layout[0]
+        );
+    } else if let Some(msg) = &app.status_message {
+        frame.render_widget(
+            Paragraph::new(msg.as_str()).style(Style::default().fg(Color::Yellow)),
+            footer_layout[0]
+        );
     }
-}
 
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(r);
-
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
+    // Line 2: Keybindings (always visible)
+    let keybindings = "j/k: Navigate | Tab: Switch | Space: Play | s: Stop | m: Mark | a: Add | d: Delete | q: Quit";
+    frame.render_widget(
+        Paragraph::new(keybindings).style(Style::default().fg(Color::DarkGray)),
+        footer_layout[1]
+    );
 }
