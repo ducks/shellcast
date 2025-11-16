@@ -1,5 +1,7 @@
 # shellcast
 
+![A scallop shell listening to podcasts on headphones](logo.png)
+
 A terminal-based podcast player written in Rust.
 
 ## Features
