@@ -21,6 +21,8 @@ pub enum Action {
     // Playback
     PlayPause,
     Stop,
+    SeekForward,
+    SeekBackward,
 
     // Global
     Quit,
@@ -78,6 +80,12 @@ impl Action {
                 // Handled in main loop (needs player reference)
             }
             Action::Stop => {
+                // Handled in main loop (needs player reference)
+            }
+            Action::SeekForward => {
+                // Handled in main loop (needs player reference)
+            }
+            Action::SeekBackward => {
                 // Handled in main loop (needs player reference)
             }
         }

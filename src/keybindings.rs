@@ -69,6 +69,10 @@ impl KeyMap {
         // Playback
         self.bind(KeyBinding::new(KeyCode::Char(' ')), Action::PlayPause);
         self.bind(KeyBinding::new(KeyCode::Char('s')), Action::Stop);
+        self.bind(KeyBinding::new(KeyCode::Left), Action::SeekBackward);
+        self.bind(KeyBinding::new(KeyCode::Right), Action::SeekForward);
+        self.bind(KeyBinding::new(KeyCode::Char('h')), Action::SeekBackward);
+        self.bind(KeyBinding::new(KeyCode::Char('l')), Action::SeekForward);
     }
 }
 
