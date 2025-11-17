@@ -34,6 +34,8 @@ pub enum Action {
 
     // Global
     Quit,
+    ShowHelp,
+    ShowInfo,
 }
 
 impl Action {
@@ -117,6 +119,12 @@ impl Action {
             }
             Action::SubscribeFromBrowse => {
                 // Handled in main loop (needs feed fetching)
+            }
+            Action::ShowHelp => {
+                app.show_help = !app.show_help;
+            }
+            Action::ShowInfo => {
+                app.show_info = !app.show_info;
             }
         }
     }

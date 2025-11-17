@@ -1,9 +1,9 @@
 use crate::app::{App, AppScreen, InputMode, PaneFocus};
 use crate::playback::Player;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    widgets::{Block, Borders, Gauge, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Clear, Gauge, List, ListItem, Paragraph, Wrap},
     Frame,
 };
 
@@ -26,6 +26,16 @@ pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player) {
     }
 
     draw_footer(frame, app, player, main_layout[1]);
+
+    // Draw help popup on top if visible
+    if app.show_help {
+        draw_help_popup(frame);
+    }
+
+    // Draw info popup on top if visible
+    if app.show_info {
+        draw_info_popup(frame, app);
+    }
 }
 
 fn draw_podcasts_screen(frame: &mut Frame, app: &App, area: Rect) {
@@ -103,8 +113,14 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
                 } else {
                     String::new()
                 };
-                
-                let label = format!("{} {}{}", marker, episode.title, duration_str);
+
+                let date_str = if !episode.published.is_empty() {
+                    format!("{} - ", episode.published)
+                } else {
+                    String::new()
+                };
+
+                let label = format!("{} {}{}{}", marker, date_str, episode.title, duration_str);
                 
                 let style = if i == app.selected_episode_index {
                     Style::default().add_modifier(Modifier::BOLD)
@@ -312,10 +328,139 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
         }
 
         // Line 2: Keybindings (always visible)
-        let keybindings = "j/k: Navigate | Tab: Switch | Space: Play | s: Stop | m: Mark | a: Add | d: Delete | q: Quit";
+        let keybindings = "j/k: Navigate | Tab: Switch | Space: Play | s: Stop | m: Mark | a: Add | d: Delete | ?: Help | q: Quit";
         frame.render_widget(
             Paragraph::new(keybindings).style(Style::default().fg(Color::DarkGray)),
             footer_layout[1]
         );
     }
+}
+
+/// Helper function to create a centered rect
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
+}
+
+fn draw_help_popup(frame: &mut Frame) {
+    let area = centered_rect(70, 80, frame.area());
+
+    let help_text = r#"
+SHELLCAST - KEYBINDINGS
+
+Navigation:
+  j/k or ↑/↓     Move up/down in lists
+  g/G            Jump to top/bottom of list
+  Tab            Switch focus between podcast list and episode list
+
+Screen Switching:
+  1              Switch to Podcasts view
+  5              Switch to Browse/Search view
+
+Browse Mode:
+  /              Start searching (when in Browse mode)
+  Enter          Subscribe to selected search result
+
+Playback:
+  Space          Play/pause selected episode
+  s              Stop playback
+  h or ←         Seek backward 30 seconds
+  l or →         Seek forward 30 seconds
+
+Management:
+  m              Mark episode as played/unplayed
+  a              Add new podcast feed (enter URL)
+  d              Delete selected podcast
+  i              Show episode info/description
+
+Help & Exit:
+  ?              Toggle this help screen
+  Esc            Close popups
+  q              Quit application
+"#;
+
+    // Clear the area
+    frame.render_widget(Clear, area);
+
+    // Draw the help popup
+    let block = Block::default()
+        .title(" Help - Press ? or Esc to close ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan))
+        .style(Style::default().bg(Color::Black));
+
+    let paragraph = Paragraph::new(help_text)
+        .block(block)
+        .wrap(Wrap { trim: false })
+        .alignment(Alignment::Left);
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_info_popup(frame: &mut Frame, app: &App) {
+    let area = centered_rect(70, 70, frame.area());
+
+    // Get the currently selected episode's info
+    let (title, published, description, duration) = if let Some(podcast) = app.selected_podcast() {
+        if let Some(episode) = podcast.episodes.get(app.selected_episode_index) {
+            let duration_str = if let Some(dur) = episode.duration {
+                let mins = dur.as_secs() / 60;
+                let secs = dur.as_secs() % 60;
+                format!("Duration: {:02}:{:02}", mins, secs)
+            } else {
+                "Duration: Unknown".to_string()
+            };
+
+            (
+                episode.title.clone(),
+                episode.published.clone(),
+                episode.description.clone(),
+                duration_str,
+            )
+        } else {
+            ("No episode selected".to_string(), String::new(), String::new(), String::new())
+        }
+    } else {
+        ("No podcast selected".to_string(), String::new(), String::new(), String::new())
+    };
+
+    let info_text = format!(
+        "{}\n\nPublished: {}\n{}\n\n{}\n",
+        title,
+        if published.is_empty() { "Unknown" } else { &published },
+        duration,
+        if description.is_empty() { "No description available." } else { &description }
+    );
+
+    // Clear the area
+    frame.render_widget(Clear, area);
+
+    // Draw the info popup
+    let block = Block::default()
+        .title(" Episode Info - Press i or Esc to close ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan))
+        .style(Style::default().bg(Color::Black));
+
+    let paragraph = Paragraph::new(info_text)
+        .block(block)
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Left);
+
+    frame.render_widget(paragraph, area);
 }

@@ -116,6 +116,18 @@ fn main() -> Result<()> {
 
                 use crossterm::event::KeyCode;
 
+                // Handle Esc key to close popups
+                if key.code == KeyCode::Esc {
+                    if app.show_help {
+                        app.show_help = false;
+                        continue;
+                    }
+                    if app.show_info {
+                        app.show_info = false;
+                        continue;
+                    }
+                }
+
                 // Handle browse-specific keys
                 if app.screen == app::AppScreen::Browse {
                     match key.code {
