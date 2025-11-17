@@ -10,7 +10,9 @@ A terminal-based podcast player written in Rust.
 - **Podcast Discovery** - Browse and search thousands of podcasts via gpodder.net (free, no API keys required)
 - **Smart Deduplication** - Search results deduplicated by title and hostname, sorted by popularity
 - **Feed Management** - Subscribe to podcast RSS/Atom feeds (RSS and Atom format support)
-- **Episode Browser** - Browse episodes in a clean two-pane TUI
+- **Episode Browser** - Browse episodes with publish dates in a clean two-pane TUI
+- **Episode Info** - View full episode descriptions and metadata in popup (i key)
+- **Help Screen** - Built-in keybindings reference (? key)
 - **Audio Playback** - Stream and play podcast episodes with seek controls (±30s)
 - **Played Status** - Mark episodes as played/unplayed, synced to disk
 - **Persistence** - Subscriptions and playback state saved automatically
@@ -25,7 +27,13 @@ Active development - core features implemented and working. See TODO section for
 
 ## Recent Changes
 
-### Latest - Browse & Search (2025-11-16)
+### Latest - Help, Info & Dates (2025-11-16)
+- **Help Screen** - Press `?` to view comprehensive keybindings reference
+- **Episode Info Popup** - Press `i` to view full episode description, publish date, and duration
+- **Publish Dates** - Episode list now shows publication dates for each episode
+- **Popup Navigation** - All popups close with `Esc` or their toggle key
+
+### Browse & Search (2025-11-16)
 - **Browse Mode** - Press `5` to discover new podcasts
 - **Podcast Search** - Search via gpodder.net's free API (no authentication required)
 - **Smart Deduplication** - Results deduplicated by normalized title + hostname
@@ -117,7 +125,12 @@ nix-shell
 - `m` - Mark episode as played/unplayed
 - `a` - Add new podcast feed (enter URL)
 - `d` - Delete selected podcast
-- `q` - Quit
+
+### Help & Info
+- `?` - Show help screen with all keybindings
+- `i` - Show episode info/description popup
+- `Esc` - Close popups
+- `q` - Quit application
 
 ## TODO
 
@@ -138,6 +151,9 @@ nix-shell
 - [x] **Podcast discovery and search** (gpodder.net integration)
 - [x] **Smart deduplication** (by title + hostname)
 - [x] **Subscriber rankings** (sorted search results)
+- [x] **Help screen** (comprehensive keybindings reference)
+- [x] **Episode info popup** (view descriptions and metadata)
+- [x] **Publish dates** (shown in episode list)
 
 ### In Progress
 - [ ] Better error handling and user feedback
@@ -147,13 +163,14 @@ nix-shell
 - [ ] Episode download manager for offline listening
 - [ ] Speed control (1.5x, 2x playback)
 - [ ] Episode queue
-- [ ] Show notes viewer
 - [ ] Episode artwork display
 - [ ] OPML import/export
 - [ ] Chapter support
 - [ ] Theming system
 - [ ] Better buffering status in UI
 - [ ] Podcast refresh/update functionality
+- [ ] Filter episodes (show unplayed only)
+- [ ] Auto-mark as played when episode finishes
 
 ## Related Projects
 
