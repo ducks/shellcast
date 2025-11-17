@@ -45,6 +45,8 @@ impl KeyMap {
     pub fn load_defaults(&mut self) {
         // Global
         self.bind(KeyBinding::new(KeyCode::Char('q')), Action::Quit);
+        self.bind(KeyBinding::new(KeyCode::Char('?')), Action::ShowHelp);
+        self.bind(KeyBinding::new(KeyCode::Char('i')), Action::ShowInfo);
 
         // Screen switching (like cmus)
         self.bind(KeyBinding::new(KeyCode::Char('1')), Action::SwitchToPodcasts);

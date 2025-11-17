@@ -83,6 +83,10 @@ pub struct App {
 
     // Browse state
     pub browse: BrowseState,
+
+    // UI state
+    pub show_help: bool,
+    pub show_info: bool,
 }
 
 impl App {
@@ -102,6 +106,8 @@ impl App {
             paused_at: None,
             paused_duration: Duration::ZERO,
             browse: BrowseState::new(),
+            show_help: false,
+            show_info: false,
         }
     }
 
