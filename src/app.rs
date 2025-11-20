@@ -201,6 +201,14 @@ impl App {
             .map(|e| e.audio_url.clone())
     }
 
+    pub fn selected_episode_mut(&mut self) -> Option<&mut Episode> {
+        let p = self.selected_podcast_index;
+        let e = self.selected_episode_index;
+        self.podcasts
+            .get_mut(p)
+            .and_then(|podcast| podcast.episodes.get_mut(e))
+    }
+
     pub fn move_podcast_up(&mut self) {
         if self.selected_podcast_index > 0 {
             self.selected_podcast_index -= 1;
@@ -265,10 +273,9 @@ impl App {
     }
 
     pub fn toggle_played(&mut self) {
-        if let Some(podcast) = self.podcasts.get_mut(self.selected_podcast_index)
-            && let Some(episode) = podcast.episodes.get_mut(self.selected_episode_index) {
-                episode.played = !episode.played;
-            }
+        if let Some(episode) = self.selected_episode_mut() {
+            episode.played = !episode.played;
+        }
     }
 
     pub fn start_search(&mut self) {
