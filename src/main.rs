@@ -13,12 +13,256 @@ use keybindings::{KeyMap, KeyBinding};
 use playback::Player;
 
 use crossterm::{
-    event::{self, Event},
+    event::{self, Event, KeyCode, KeyEvent},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::{Result, stdout};
+
+fn handle_adding_feed_input(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Char(c) => {
+            app.input_buffer.push(c);
+        }
+        KeyCode::Backspace => {
+            app.input_buffer.pop();
+        }
+        KeyCode::Enter => {
+            let url = app.input_buffer.clone();
+            app.input_mode = InputMode::Normal;
+            app.input_buffer.clear();
+
+            // Fetch and parse feed
+            match feed::fetch_and_parse(&url) {
+                Ok(podcast) => {
+                    app.status_message = Some(format!("Added: {}", podcast.title));
+                    app.add_podcast(podcast);
+                }
+                Err(e) => {
+                    app.status_message = Some(format!("Error: {}", e));
+                }
+            }
+        }
+        KeyCode::Esc => {
+            app.cancel_input();
+        }
+        _ => {}
+    }
+}
+
+fn handle_search_input(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Char(c) => {
+            app.browse.search_query.push(c);
+        }
+        KeyCode::Backspace => {
+            app.browse.search_query.pop();
+        }
+        KeyCode::Enter => {
+            let query = app.browse.search_query.clone();
+            app.cancel_search();
+
+            // Perform search
+            match browse::search_podcasts(&query) {
+                Ok(results) => {
+                    app.browse.search_results = results;
+                    app.browse.selected_index = 0;
+                    app.browse.showing_defaults = false;
+                    app.status_message = Some(format!("Found {} podcasts", app.browse.search_results.len()));
+                }
+                Err(e) => {
+                    app.status_message = Some(format!("Search error: {}", e));
+                }
+            }
+        }
+        KeyCode::Esc => {
+            app.cancel_search();
+        }
+        _ => {}
+    }
+}
+
+fn handle_browse_screen_key(app: &mut App, key: KeyEvent) -> bool {
+    match key.code {
+        KeyCode::Char('/') => {
+            app.start_search();
+            true
+        }
+        KeyCode::Enter => {
+            // Subscribe to selected podcast
+            if let Some(result) = app.browse.selected_result() {
+                let feed_url = result.feed_url.clone();
+                match feed::fetch_and_parse(&feed_url) {
+                    Ok(podcast) => {
+                        app.status_message = Some(format!("Subscribed: {}", podcast.title));
+                        app.add_podcast(podcast);
+                        app.screen = app::AppScreen::Podcasts;
+                    }
+                    Err(e) => {
+                        app.status_message = Some(format!("Error: {}", e));
+                    }
+                }
+            }
+            true
+        }
+        _ => false,
+    }
+}
+
+fn handle_normal_key(
+    app: &mut App,
+    player: &mut Player,
+    keymap: &KeyMap,
+    key: KeyEvent,
+) -> bool {
+    // Clear status message on any keypress
+    app.status_message = None;
+
+    // Handle Esc key to close popups
+    if key.code == KeyCode::Esc {
+        if app.show_help {
+            app.show_help = false;
+            return false;
+        }
+        if app.show_info {
+            app.show_info = false;
+            return false;
+        }
+    }
+
+    // Normal mode keybindings
+    let binding = KeyBinding::new(key.code);
+
+    if let Some(action) = keymap.get_action(&binding) {
+        if matches!(action, Action::Quit) {
+            return true;
+        }
+
+        // Handle playback actions
+        match action {
+            Action::PlayPause => {
+                let selected_url = app.selected_episode_url();
+                let is_different_episode = selected_url.as_ref() != app.playback.url.as_ref();
+
+                // If user selected a different episode, stop current and play new one
+                if is_different_episode || (!player.is_playing() && !player.is_paused()) {
+                    // Get episode info before borrowing
+                    let episode_info = app.selected_podcast()
+                        .and_then(|p| p.episodes.get(app.selected_episode_index))
+                        .map(|e| (e.audio_url.clone(), e.title.clone(), e.duration));
+
+                    if let Some((audio_url, title, duration)) = episode_info {
+                        if !audio_url.is_empty() {
+                            match player.play(&audio_url) {
+                                Ok(_) => {
+                                    app.status_message = Some(format!("Playing: {}", title));
+                                    app.playback.url = Some(audio_url);
+
+                                    // Start playback tracking
+                                    app.playback.start = Some(std::time::Instant::now());
+                                    app.playback.duration_secs = duration.map(|d| d.as_secs()).unwrap_or(0);
+                                    app.playback.paused_at = None;
+                                    app.playback.paused_duration = std::time::Duration::ZERO;
+                                }
+                                Err(e) => {
+                                    app.status_message = Some(format!("Error: {}", e));
+                                    app.playback.url = None;
+                                    app.playback.start = None;
+                                }
+                            }
+                        } else {
+                            app.status_message = Some("No audio URL for this episode".to_string());
+                        }
+                    }
+                } else if player.is_paused() {
+                    // Resume current episode
+                    player.resume();
+                    let title = app.selected_podcast()
+                        .and_then(|p| p.episodes.get(app.selected_episode_index))
+                        .map(|e| e.title.clone());
+                    if let Some(title) = title {
+                        app.status_message = Some(format!("Resumed: {}", title));
+                    }
+
+                    // Resume playback tracking
+                    if let Some(paused_at) = app.playback.paused_at {
+                        app.playback.paused_duration += std::time::Instant::now().duration_since(paused_at);
+                        app.playback.paused_at = None;
+                    }
+                } else {
+                    // Pause current episode
+                    player.pause();
+                    let title = app.selected_podcast()
+                        .and_then(|p| p.episodes.get(app.selected_episode_index))
+                        .map(|e| e.title.clone());
+                    if let Some(title) = title {
+                        app.status_message = Some(format!("Paused: {}", title));
+                    }
+
+                    // Mark pause time
+                    app.playback.paused_at = Some(std::time::Instant::now());
+                }
+            }
+            Action::Stop => {
+                player.stop();
+                app.status_message = Some("Stopped".to_string());
+                app.playback.url = None;
+
+                // Clear playback tracking
+                app.playback.start = None;
+                app.playback.paused_at = None;
+                app.playback.paused_duration = std::time::Duration::ZERO;
+            }
+            Action::SeekForward => {
+                if app.playback.start.is_some() {
+                    match player.seek_forward(30) {
+                        Ok(_) => {
+                            app.status_message = Some("⏩ +30s".to_string());
+                        }
+                        Err(e) => {
+                            app.status_message = Some(format!("Seek error: {}", e));
+                        }
+                    }
+                }
+            }
+            Action::SeekBackward => {
+                if app.playback.start.is_some() {
+                    match player.seek_backward(30) {
+                        Ok(_) => {
+                            app.status_message = Some("⏪ -30s".to_string());
+                        }
+                        Err(e) => {
+                            app.status_message = Some(format!("Seek error: {}", e));
+                        }
+                    }
+                }
+            }
+            Action::RefreshFeed => {
+                if let Some(podcast) = app.podcasts.get_mut(app.selected_podcast_index) {
+                    match feed::refresh_feed(podcast) {
+                        Ok(count) => {
+                            app.status_message = if count > 0 {
+                                Some(format!("Refreshed: {} new episode(s)", count))
+                            } else {
+                                Some("Refreshed: No new episodes".to_string())
+                            };
+                            app.needs_save = true;
+                        }
+                        Err(e) => {
+                            app.status_message = Some(format!("Refresh error: {}", e));
+                        }
+                    }
+                }
+            }
+            _ => {
+                action.execute(app);
+            }
+        }
+    }
+
+    false
+}
 
 fn main() -> Result<()> {
     enable_raw_mode()?;
@@ -47,241 +291,22 @@ fn main() -> Result<()> {
         if event::poll(std::time::Duration::from_millis(50))?
             && let Event::Key(key) = event::read()?
         {
-            // Handle input mode separately
-            if app.input_mode == InputMode::AddingFeed {
-                use crossterm::event::KeyCode;
-                match key.code {
-                    KeyCode::Char(c) => {
-                        app.input_buffer.push(c);
-                    }
-                    KeyCode::Backspace => {
-                        app.input_buffer.pop();
-                    }
-                    KeyCode::Enter => {
-                        let url = app.input_buffer.clone();
-                        app.input_mode = InputMode::Normal;
-                        app.input_buffer.clear();
-
-                        // Fetch and parse feed
-                        match feed::fetch_and_parse(&url) {
-                            Ok(podcast) => {
-                                app.status_message = Some(format!("Added: {}", podcast.title));
-                                app.add_podcast(podcast);
-                            }
-                            Err(e) => {
-                                app.status_message = Some(format!("Error: {}", e));
-                            }
-                        }
-                    }
-                    KeyCode::Esc => {
-                        app.cancel_input();
-                    }
-                    _ => {}
+            match app.input_mode {
+                InputMode::AddingFeed => {
+                    handle_adding_feed_input(&mut app, key);
                 }
-            } else if app.input_mode == InputMode::Searching {
-                use crossterm::event::KeyCode;
-                match key.code {
-                    KeyCode::Char(c) => {
-                        app.browse.search_query.push(c);
-                    }
-                    KeyCode::Backspace => {
-                        app.browse.search_query.pop();
-                    }
-                    KeyCode::Enter => {
-                        let query = app.browse.search_query.clone();
-                        app.cancel_search();
-
-                        // Perform search
-                        match browse::search_podcasts(&query) {
-                            Ok(results) => {
-                                app.browse.search_results = results;
-                                app.browse.selected_index = 0;
-                                app.browse.showing_defaults = false;
-                                app.status_message = Some(format!("Found {} podcasts", app.browse.search_results.len()));
-                            }
-                            Err(e) => {
-                                app.status_message = Some(format!("Search error: {}", e));
-                            }
-                        }
-                    }
-                    KeyCode::Esc => {
-                        app.cancel_search();
-                    }
-                    _ => {}
+                InputMode::Searching => {
+                    handle_search_input(&mut app, key);
                 }
-            } else {
-                // Clear status message on any keypress
-                app.status_message = None;
-
-                use crossterm::event::KeyCode;
-
-                // Handle Esc key to close popups
-                if key.code == KeyCode::Esc {
-                    if app.show_help {
-                        app.show_help = false;
+                InputMode::Normal => {
+                    // Handle browse-specific keys first
+                    if app.is_browse_screen() && handle_browse_screen_key(&mut app, key) {
                         continue;
                     }
-                    if app.show_info {
-                        app.show_info = false;
-                        continue;
-                    }
-                }
 
-                // Handle browse-specific keys
-                if app.is_browse_screen() {
-                    match key.code {
-                        KeyCode::Char('/') => {
-                            app.start_search();
-                            continue;
-                        }
-                        KeyCode::Enter => {
-                            // Subscribe to selected podcast
-                            if let Some(result) = app.browse.selected_result() {
-                                let feed_url = result.feed_url.clone();
-                                match feed::fetch_and_parse(&feed_url) {
-                                    Ok(podcast) => {
-                                        app.status_message = Some(format!("Subscribed: {}", podcast.title));
-                                        app.add_podcast(podcast);
-                                        app.screen = app::AppScreen::Podcasts;
-                                    }
-                                    Err(e) => {
-                                        app.status_message = Some(format!("Error: {}", e));
-                                    }
-                                }
-                            }
-                            continue;
-                        }
-                        _ => {}
-                    }
-                }
-
-                // Normal mode keybindings
-                let binding = KeyBinding::new(key.code);
-
-                if let Some(action) = keymap.get_action(&binding) {
-                    if matches!(action, Action::Quit) {
+                    // Handle normal mode keys
+                    if handle_normal_key(&mut app, &mut player, &keymap, key) {
                         break;
-                    }
-
-                    // Handle playback actions
-                    match action {
-                        Action::PlayPause => {
-                            let selected_url = app.selected_episode_url();
-                            let is_different_episode = selected_url.as_ref() != app.playback.url.as_ref();
-
-                            // If user selected a different episode, stop current and play new one
-                            if is_different_episode || (!player.is_playing() && !player.is_paused()) {
-                                // Get episode info before borrowing
-                                let episode_info = app.selected_podcast()
-                                    .and_then(|p| p.episodes.get(app.selected_episode_index))
-                                    .map(|e| (e.audio_url.clone(), e.title.clone(), e.duration));
-
-                                if let Some((audio_url, title, duration)) = episode_info {
-                                    if !audio_url.is_empty() {
-                                        match player.play(&audio_url) {
-                                            Ok(_) => {
-                                                app.status_message = Some(format!("Playing: {}", title));
-                                                app.playback.url = Some(audio_url);
-
-                                                // Start playback tracking
-                                                app.playback.start = Some(std::time::Instant::now());
-                                                app.playback.duration_secs = duration.map(|d| d.as_secs()).unwrap_or(0);
-                                                app.playback.paused_at = None;
-                                                app.playback.paused_duration = std::time::Duration::ZERO;
-                                            }
-                                            Err(e) => {
-                                                app.status_message = Some(format!("Error: {}", e));
-                                                app.playback.url = None;
-                                                app.playback.start = None;
-                                            }
-                                        }
-                                    } else {
-                                        app.status_message = Some("No audio URL for this episode".to_string());
-                                    }
-                                }
-                            } else if player.is_paused() {
-                                // Resume current episode
-                                player.resume();
-                                let title = app.selected_podcast()
-                                    .and_then(|p| p.episodes.get(app.selected_episode_index))
-                                    .map(|e| e.title.clone());
-                                if let Some(title) = title {
-                                    app.status_message = Some(format!("Resumed: {}", title));
-                                }
-
-                                // Resume playback tracking
-                                if let Some(paused_at) = app.playback.paused_at {
-                                    app.playback.paused_duration += std::time::Instant::now().duration_since(paused_at);
-                                    app.playback.paused_at = None;
-                                }
-                            } else {
-                                // Pause current episode
-                                player.pause();
-                                let title = app.selected_podcast()
-                                    .and_then(|p| p.episodes.get(app.selected_episode_index))
-                                    .map(|e| e.title.clone());
-                                if let Some(title) = title {
-                                    app.status_message = Some(format!("Paused: {}", title));
-                                }
-
-                                // Mark pause time
-                                app.playback.paused_at = Some(std::time::Instant::now());
-                            }
-                        }
-                        Action::Stop => {
-                            player.stop();
-                            app.status_message = Some("Stopped".to_string());
-                            app.playback.url = None;
-
-                            // Clear playback tracking
-                            app.playback.start = None;
-                            app.playback.paused_at = None;
-                            app.playback.paused_duration = std::time::Duration::ZERO;
-                        }
-                        Action::SeekForward => {
-                            if app.playback.start.is_some() {
-                                match player.seek_forward(30) {
-                                    Ok(_) => {
-                                        app.status_message = Some("⏩ +30s".to_string());
-                                    }
-                                    Err(e) => {
-                                        app.status_message = Some(format!("Seek error: {}", e));
-                                    }
-                                }
-                            }
-                        }
-                        Action::SeekBackward => {
-                            if app.playback.start.is_some() {
-                                match player.seek_backward(30) {
-                                    Ok(_) => {
-                                        app.status_message = Some("⏪ -30s".to_string());
-                                    }
-                                    Err(e) => {
-                                        app.status_message = Some(format!("Seek error: {}", e));
-                                    }
-                                }
-                            }
-                        }
-                        Action::RefreshFeed => {
-                            if let Some(podcast) = app.podcasts.get_mut(app.selected_podcast_index) {
-                                match feed::refresh_feed(podcast) {
-                                    Ok(count) => {
-                                        app.status_message = if count > 0 {
-                                            Some(format!("Refreshed: {} new episode(s)", count))
-                                        } else {
-                                            Some("Refreshed: No new episodes".to_string())
-                                        };
-                                        app.needs_save = true;
-                                    }
-                                    Err(e) => {
-                                        app.status_message = Some(format!("Refresh error: {}", e));
-                                    }
-                                }
-                            }
-                        }
-                        _ => {
-                            action.execute(&mut app);
-                        }
                     }
                 }
             }
