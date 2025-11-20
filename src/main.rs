@@ -98,6 +98,7 @@ fn main() -> Result<()> {
                             Ok(results) => {
                                 app.browse.search_results = results;
                                 app.browse.selected_index = 0;
+                                app.browse.showing_defaults = false;
                                 app.status_message = Some(format!("Found {} podcasts", app.browse.search_results.len()));
                             }
                             Err(e) => {

@@ -16,15 +16,17 @@ pub struct BrowseState {
     pub search_results: Vec<SearchResult>,
     pub selected_index: usize,
     pub is_searching: bool,
+    pub showing_defaults: bool,
 }
 
 impl BrowseState {
     pub fn new() -> Self {
         Self {
             search_query: String::new(),
-            search_results: Vec::new(),
+            search_results: get_default_podcasts(),
             selected_index: 0,
             is_searching: false,
+            showing_defaults: true,
         }
     }
 
@@ -43,6 +45,76 @@ impl BrowseState {
     pub fn selected_result(&self) -> Option<&SearchResult> {
         self.search_results.get(self.selected_index)
     }
+}
+
+/// Returns a curated list of popular/featured podcasts to show by default
+pub fn get_default_podcasts() -> Vec<SearchResult> {
+    vec![
+        SearchResult {
+            title: "This American Life".to_string(),
+            author: "This American Life".to_string(),
+            description: "This American Life is a weekly public radio show, heard by 2.2 million people on more than 500 stations.".to_string(),
+            feed_url: "https://www.thisamericanlife.org/podcast/rss.xml".to_string(),
+            artwork_url: None,
+            subscribers: 1000000,
+        },
+        SearchResult {
+            title: "Radiolab".to_string(),
+            author: "WNYC Studios".to_string(),
+            description: "A two-time Peabody Award-winner, Radiolab is an investigation told through sounds and stories.".to_string(),
+            feed_url: "https://feeds.wnyc.org/radiolab".to_string(),
+            artwork_url: None,
+            subscribers: 950000,
+        },
+        SearchResult {
+            title: "99% Invisible".to_string(),
+            author: "Roman Mars".to_string(),
+            description: "Design is everywhere in our lives, perhaps most importantly in the places where we've just stopped noticing.".to_string(),
+            feed_url: "https://feeds.99percentinvisible.org/99percentinvisible".to_string(),
+            artwork_url: None,
+            subscribers: 900000,
+        },
+        SearchResult {
+            title: "Planet Money".to_string(),
+            author: "NPR".to_string(),
+            description: "The economy explained. Imagine you could call up a friend and say, 'Meet me at the bar and tell me what's going on with the economy.'".to_string(),
+            feed_url: "https://feeds.npr.org/510289/podcast.xml".to_string(),
+            artwork_url: None,
+            subscribers: 850000,
+        },
+        SearchResult {
+            title: "Reply All".to_string(),
+            author: "Gimlet".to_string(),
+            description: "A show about the internet that is actually an unfailingly original exploration of modern life.".to_string(),
+            feed_url: "https://feeds.megaphone.fm/replyall".to_string(),
+            artwork_url: None,
+            subscribers: 800000,
+        },
+        SearchResult {
+            title: "The Daily".to_string(),
+            author: "The New York Times".to_string(),
+            description: "This is what the news should sound like. The biggest stories of our time, told by the best journalists in the world.".to_string(),
+            feed_url: "https://feeds.simplecast.com/54nAGcIl".to_string(),
+            artwork_url: None,
+            subscribers: 750000,
+        },
+        SearchResult {
+            title: "Hardcore History".to_string(),
+            author: "Dan Carlin".to_string(),
+            description: "In 'Hardcore History' journalist and broadcaster Dan Carlin takes his 'Martian', unorthodox way of thinking and applies it to the past.".to_string(),
+            feed_url: "https://feeds.feedburner.com/dancarlin/history".to_string(),
+            artwork_url: None,
+            subscribers: 700000,
+        },
+        SearchResult {
+            title: "Freakonomics Radio".to_string(),
+            author: "Freakonomics Radio + Stitcher".to_string(),
+            description: "Discover the hidden side of everything with Stephen J. Dubner, co-author of the Freakonomics books.".to_string(),
+            feed_url: "https://feeds.simplecast.com/Y8lFbOT4".to_string(),
+            artwork_url: None,
+            subscribers: 650000,
+        },
+    ]
 }
 
 /// Normalize title for deduplication (lowercase, remove extra chars)
