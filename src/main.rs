@@ -167,7 +167,7 @@ fn main() -> Result<()> {
                     match action {
                         Action::PlayPause => {
                             let selected_url = app.selected_episode_url();
-                            let is_different_episode = selected_url.as_ref() != app.currently_playing_url.as_ref();
+                            let is_different_episode = selected_url.as_ref() != app.playback.url.as_ref();
 
                             // If user selected a different episode, stop current and play new one
                             if is_different_episode || (!player.is_playing() && !player.is_paused()) {
@@ -181,18 +181,18 @@ fn main() -> Result<()> {
                                         match player.play(&audio_url) {
                                             Ok(_) => {
                                                 app.status_message = Some(format!("Playing: {}", title));
-                                                app.currently_playing_url = Some(audio_url);
+                                                app.playback.url = Some(audio_url);
 
                                                 // Start playback tracking
-                                                app.playback_start = Some(std::time::Instant::now());
-                                                app.playback_duration = duration.map(|d| d.as_secs()).unwrap_or(0);
-                                                app.paused_at = None;
-                                                app.paused_duration = std::time::Duration::ZERO;
+                                                app.playback.start = Some(std::time::Instant::now());
+                                                app.playback.duration_secs = duration.map(|d| d.as_secs()).unwrap_or(0);
+                                                app.playback.paused_at = None;
+                                                app.playback.paused_duration = std::time::Duration::ZERO;
                                             }
                                             Err(e) => {
                                                 app.status_message = Some(format!("Error: {}", e));
-                                                app.currently_playing_url = None;
-                                                app.playback_start = None;
+                                                app.playback.url = None;
+                                                app.playback.start = None;
                                             }
                                         }
                                     } else {
@@ -210,9 +210,9 @@ fn main() -> Result<()> {
                                 }
 
                                 // Resume playback tracking
-                                if let Some(paused_at) = app.paused_at {
-                                    app.paused_duration += std::time::Instant::now().duration_since(paused_at);
-                                    app.paused_at = None;
+                                if let Some(paused_at) = app.playback.paused_at {
+                                    app.playback.paused_duration += std::time::Instant::now().duration_since(paused_at);
+                                    app.playback.paused_at = None;
                                 }
                             } else {
                                 // Pause current episode
@@ -225,21 +225,21 @@ fn main() -> Result<()> {
                                 }
 
                                 // Mark pause time
-                                app.paused_at = Some(std::time::Instant::now());
+                                app.playback.paused_at = Some(std::time::Instant::now());
                             }
                         }
                         Action::Stop => {
                             player.stop();
                             app.status_message = Some("Stopped".to_string());
-                            app.currently_playing_url = None;
+                            app.playback.url = None;
 
                             // Clear playback tracking
-                            app.playback_start = None;
-                            app.paused_at = None;
-                            app.paused_duration = std::time::Duration::ZERO;
+                            app.playback.start = None;
+                            app.playback.paused_at = None;
+                            app.playback.paused_duration = std::time::Duration::ZERO;
                         }
                         Action::SeekForward => {
-                            if app.playback_start.is_some() {
+                            if app.playback.start.is_some() {
                                 match player.seek_forward(30) {
                                     Ok(_) => {
                                         app.status_message = Some("⏩ +30s".to_string());
@@ -251,7 +251,7 @@ fn main() -> Result<()> {
                             }
                         }
                         Action::SeekBackward => {
-                            if app.playback_start.is_some() {
+                            if app.playback.start.is_some() {
                                 match player.seek_backward(30) {
                                     Ok(_) => {
                                         app.status_message = Some("⏪ -30s".to_string());

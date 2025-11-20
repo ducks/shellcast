@@ -64,6 +64,26 @@ pub enum InputMode {
     Searching,
 }
 
+pub struct PlaybackState {
+    pub url: Option<String>,
+    pub duration_secs: u64,
+    pub start: Option<Instant>,
+    pub paused_at: Option<Instant>,
+    pub paused_duration: Duration,
+}
+
+impl PlaybackState {
+    pub fn new() -> Self {
+        Self {
+            url: None,
+            duration_secs: 0,
+            start: None,
+            paused_at: None,
+            paused_duration: Duration::ZERO,
+        }
+    }
+}
+
 pub struct App {
     pub screen: AppScreen,
     pub podcasts: Vec<Podcast>,
@@ -74,13 +94,9 @@ pub struct App {
     pub input_mode: InputMode,
     pub input_buffer: String,
     pub status_message: Option<String>,
-    pub currently_playing_url: Option<String>,
 
-    // Playback tracking
-    pub playback_duration: u64,      // Total duration in seconds
-    pub playback_start: Option<Instant>,
-    pub paused_at: Option<Instant>,
-    pub paused_duration: Duration,
+    // Playback state
+    pub playback: PlaybackState,
 
     // Browse state
     pub browse: BrowseState,
@@ -102,11 +118,7 @@ impl App {
             input_mode: InputMode::Normal,
             input_buffer: String::new(),
             status_message: None,
-            currently_playing_url: None,
-            playback_duration: 0,
-            playback_start: None,
-            paused_at: None,
-            paused_duration: Duration::ZERO,
+            playback: PlaybackState::new(),
             browse: BrowseState::new(),
             show_help: false,
             show_info: false,

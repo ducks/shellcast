@@ -252,12 +252,12 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
     }
 
     // Check if we're playing something
-    if app.playback_start.is_some() {
+    if app.playback.start.is_some() {
         // Get actual playback position from the player
         let elapsed = player.get_position();
-        let total = std::time::Duration::from_secs(app.playback_duration);
+        let total = std::time::Duration::from_secs(app.playback.duration_secs);
 
-        let has_duration = app.playback_duration > 0;
+        let has_duration = app.playback.duration_secs > 0;
         let ratio = if has_duration && total.as_secs_f64() > 0.0 {
             elapsed.as_secs_f64() / total.as_secs_f64()
         } else {
