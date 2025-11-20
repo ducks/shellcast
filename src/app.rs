@@ -111,6 +111,7 @@ impl App {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_dummy_data() -> Self {
         let mut app = Self::new();
         
@@ -221,11 +222,10 @@ impl App {
     }
 
     pub fn move_episode_down(&mut self) {
-        if let Some(podcast) = self.selected_podcast() {
-            if self.selected_episode_index < podcast.episodes.len().saturating_sub(1) {
+        if let Some(podcast) = self.selected_podcast()
+            && self.selected_episode_index < podcast.episodes.len().saturating_sub(1) {
                 self.selected_episode_index += 1;
             }
-        }
     }
 
     pub fn switch_focus(&mut self) {
@@ -265,11 +265,10 @@ impl App {
     }
 
     pub fn toggle_played(&mut self) {
-        if let Some(podcast) = self.podcasts.get_mut(self.selected_podcast_index) {
-            if let Some(episode) = podcast.episodes.get_mut(self.selected_episode_index) {
+        if let Some(podcast) = self.podcasts.get_mut(self.selected_podcast_index)
+            && let Some(episode) = podcast.episodes.get_mut(self.selected_episode_index) {
                 episode.played = !episode.played;
             }
-        }
     }
 
     pub fn start_search(&mut self) {

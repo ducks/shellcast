@@ -14,6 +14,7 @@ pub enum Action {
     // Feed Management
     AddFeed,
     DeletePodcast,
+    RefreshFeed,
 
     // Episode Management
     TogglePlayed,
@@ -29,7 +30,9 @@ pub enum Action {
     SwitchToPodcasts,
 
     // Browse
+    #[allow(dead_code)]
     StartSearch,
+    #[allow(dead_code)]
     SubscribeFromBrowse,
 
     // Global
@@ -92,6 +95,9 @@ impl Action {
             }
             Action::DeletePodcast => {
                 app.delete_podcast();
+            }
+            Action::RefreshFeed => {
+                // Handled in main loop (needs feed fetching)
             }
             Action::TogglePlayed => {
                 app.toggle_played();

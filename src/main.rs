@@ -264,6 +264,23 @@ fn main() -> Result<()> {
                                 }
                             }
                         }
+                        Action::RefreshFeed => {
+                            if let Some(podcast) = app.podcasts.get_mut(app.selected_podcast_index) {
+                                match feed::refresh_feed(podcast) {
+                                    Ok(count) => {
+                                        app.status_message = if count > 0 {
+                                            Some(format!("Refreshed: {} new episode(s)", count))
+                                        } else {
+                                            Some("Refreshed: No new episodes".to_string())
+                                        };
+                                        let _ = persistence::save_podcasts(&app.podcasts);
+                                    }
+                                    Err(e) => {
+                                        app.status_message = Some(format!("Refresh error: {}", e));
+                                    }
+                                }
+                            }
+                        }
                         _ => {
                             action.execute(&mut app);
 
