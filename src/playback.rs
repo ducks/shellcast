@@ -55,7 +55,7 @@ impl Player {
             .map_err(|e| format!("Failed to decode audio: {}", e))?;
 
         // Create sink using existing stream
-        let sink = rodio::Sink::connect_new(&self.stream_handle.mixer());
+        let sink = rodio::Sink::connect_new(self.stream_handle.mixer());
         sink.append(source);
 
         self.sink = Some(sink);

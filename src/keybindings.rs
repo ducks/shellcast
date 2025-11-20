@@ -68,6 +68,7 @@ impl KeyMap {
         // Feed Management
         self.bind(KeyBinding::new(KeyCode::Char('a')), Action::AddFeed);
         self.bind(KeyBinding::new(KeyCode::Char('d')), Action::DeletePodcast);
+        self.bind(KeyBinding::new(KeyCode::Char('r')), Action::RefreshFeed);
 
         // Episode Management
         self.bind(KeyBinding::new(KeyCode::Char('m')), Action::TogglePlayed);
