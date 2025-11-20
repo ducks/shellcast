@@ -209,10 +209,16 @@ fn draw_browse_screen(frame: &mut Frame, app: &App, area: Rect) {
         })
         .collect();
 
+    let title = if app.browse.showing_defaults {
+        format!("Featured Podcasts ({})", app.browse.search_results.len())
+    } else {
+        format!("Results ({})", app.browse.search_results.len())
+    };
+
     let results_list = List::new(items)
         .block(
             Block::default()
-                .title(format!("Results ({})", app.browse.search_results.len()))
+                .title(title)
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Cyan)),
         )
