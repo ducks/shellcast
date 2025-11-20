@@ -191,6 +191,10 @@ impl App {
         app
     }
 
+    pub fn is_browse_screen(&self) -> bool {
+        matches!(self.screen, AppScreen::Browse)
+    }
+
     pub fn selected_podcast(&self) -> Option<&Podcast> {
         self.podcasts.get(self.selected_podcast_index)
     }

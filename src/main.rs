@@ -130,7 +130,7 @@ fn main() -> Result<()> {
                 }
 
                 // Handle browse-specific keys
-                if app.screen == app::AppScreen::Browse {
+                if app.is_browse_screen() {
                     match key.code {
                         KeyCode::Char('/') => {
                             app.start_search();
