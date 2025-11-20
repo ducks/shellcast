@@ -67,6 +67,7 @@ pub enum InputMode {
 pub struct App {
     pub screen: AppScreen,
     pub podcasts: Vec<Podcast>,
+    pub needs_save: bool,
     pub selected_podcast_index: usize,
     pub selected_episode_index: usize,
     pub focus: PaneFocus,
@@ -94,6 +95,7 @@ impl App {
         Self {
             screen: AppScreen::Podcasts,
             podcasts: Vec::new(),
+            needs_save: false,
             selected_podcast_index: 0,
             selected_episode_index: 0,
             focus: PaneFocus::Left,
@@ -262,6 +264,7 @@ impl App {
         self.podcasts.push(podcast);
         self.selected_podcast_index = self.podcasts.len() - 1;
         self.selected_episode_index = 0;
+        self.needs_save = true;
     }
 
     pub fn delete_podcast(&mut self) {
@@ -273,12 +276,14 @@ impl App {
                 self.selected_podcast_index -= 1;
             }
             self.selected_episode_index = 0;
+            self.needs_save = true;
         }
     }
 
     pub fn toggle_played(&mut self) {
         if let Some(episode) = self.selected_episode_mut() {
             episode.played = !episode.played;
+            self.needs_save = true;
         }
     }
 

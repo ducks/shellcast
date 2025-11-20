@@ -67,8 +67,6 @@ fn main() -> Result<()> {
                             Ok(podcast) => {
                                 app.status_message = Some(format!("Added: {}", podcast.title));
                                 app.add_podcast(podcast);
-                                // Auto-save after adding
-                                let _ = persistence::save_podcasts(&app.podcasts);
                             }
                             Err(e) => {
                                 app.status_message = Some(format!("Error: {}", e));
@@ -144,7 +142,6 @@ fn main() -> Result<()> {
                                     Ok(podcast) => {
                                         app.status_message = Some(format!("Subscribed: {}", podcast.title));
                                         app.add_podcast(podcast);
-                                        let _ = persistence::save_podcasts(&app.podcasts);
                                         app.screen = app::AppScreen::Podcasts;
                                     }
                                     Err(e) => {
@@ -274,7 +271,7 @@ fn main() -> Result<()> {
                                         } else {
                                             Some("Refreshed: No new episodes".to_string())
                                         };
-                                        let _ = persistence::save_podcasts(&app.podcasts);
+                                        app.needs_save = true;
                                     }
                                     Err(e) => {
                                         app.status_message = Some(format!("Refresh error: {}", e));
@@ -284,15 +281,18 @@ fn main() -> Result<()> {
                         }
                         _ => {
                             action.execute(&mut app);
-
-                            // Auto-save after delete or toggle played
-                            if matches!(action, Action::DeletePodcast | Action::TogglePlayed) {
-                                let _ = persistence::save_podcasts(&app.podcasts);
-                            }
                         }
                     }
                 }
             }
+        }
+
+        // Centralized persistence
+        if app.needs_save {
+            if let Err(e) = persistence::save_podcasts(&app.podcasts) {
+                app.status_message = Some(format!("Save error: {}", e));
+            }
+            app.needs_save = false;
         }
     }
 
