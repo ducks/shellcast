@@ -64,22 +64,39 @@ pub enum InputMode {
     Searching,
 }
 
+pub struct PlaybackState {
+    pub url: Option<String>,
+    pub duration_secs: u64,
+    pub start: Option<Instant>,
+    pub paused_at: Option<Instant>,
+    pub paused_duration: Duration,
+}
+
+impl PlaybackState {
+    pub fn new() -> Self {
+        Self {
+            url: None,
+            duration_secs: 0,
+            start: None,
+            paused_at: None,
+            paused_duration: Duration::ZERO,
+        }
+    }
+}
+
 pub struct App {
     pub screen: AppScreen,
     pub podcasts: Vec<Podcast>,
+    pub needs_save: bool,
     pub selected_podcast_index: usize,
     pub selected_episode_index: usize,
     pub focus: PaneFocus,
     pub input_mode: InputMode,
     pub input_buffer: String,
     pub status_message: Option<String>,
-    pub currently_playing_url: Option<String>,
 
-    // Playback tracking
-    pub playback_duration: u64,      // Total duration in seconds
-    pub playback_start: Option<Instant>,
-    pub paused_at: Option<Instant>,
-    pub paused_duration: Duration,
+    // Playback state
+    pub playback: PlaybackState,
 
     // Browse state
     pub browse: BrowseState,
@@ -94,17 +111,14 @@ impl App {
         Self {
             screen: AppScreen::Podcasts,
             podcasts: Vec::new(),
+            needs_save: false,
             selected_podcast_index: 0,
             selected_episode_index: 0,
             focus: PaneFocus::Left,
             input_mode: InputMode::Normal,
             input_buffer: String::new(),
             status_message: None,
-            currently_playing_url: None,
-            playback_duration: 0,
-            playback_start: None,
-            paused_at: None,
-            paused_duration: Duration::ZERO,
+            playback: PlaybackState::new(),
             browse: BrowseState::new(),
             show_help: false,
             show_info: false,
@@ -191,6 +205,10 @@ impl App {
         app
     }
 
+    pub fn is_browse_screen(&self) -> bool {
+        matches!(self.screen, AppScreen::Browse)
+    }
+
     pub fn selected_podcast(&self) -> Option<&Podcast> {
         self.podcasts.get(self.selected_podcast_index)
     }
@@ -199,6 +217,14 @@ impl App {
         self.selected_podcast()
             .and_then(|p| p.episodes.get(self.selected_episode_index))
             .map(|e| e.audio_url.clone())
+    }
+
+    pub fn selected_episode_mut(&mut self) -> Option<&mut Episode> {
+        let p = self.selected_podcast_index;
+        let e = self.selected_episode_index;
+        self.podcasts
+            .get_mut(p)
+            .and_then(|podcast| podcast.episodes.get_mut(e))
     }
 
     pub fn move_podcast_up(&mut self) {
@@ -250,6 +276,7 @@ impl App {
         self.podcasts.push(podcast);
         self.selected_podcast_index = self.podcasts.len() - 1;
         self.selected_episode_index = 0;
+        self.needs_save = true;
     }
 
     pub fn delete_podcast(&mut self) {
@@ -261,14 +288,15 @@ impl App {
                 self.selected_podcast_index -= 1;
             }
             self.selected_episode_index = 0;
+            self.needs_save = true;
         }
     }
 
     pub fn toggle_played(&mut self) {
-        if let Some(podcast) = self.podcasts.get_mut(self.selected_podcast_index)
-            && let Some(episode) = podcast.episodes.get_mut(self.selected_episode_index) {
-                episode.played = !episode.played;
-            }
+        if let Some(episode) = self.selected_episode_mut() {
+            episode.played = !episode.played;
+            self.needs_save = true;
+        }
     }
 
     pub fn start_search(&mut self) {
