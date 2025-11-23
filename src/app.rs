@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use crate::browse::BrowseState;
+use crate::chapters::ChapterList;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Podcast {
@@ -19,6 +20,7 @@ pub struct Episode {
     pub duration: Option<Duration>,
     pub audio_url: String,
     pub played: bool,
+    pub chapters_url: Option<String>,
 }
 
 // Custom serialization for Option<Duration>
@@ -104,6 +106,9 @@ pub struct App {
     // UI state
     pub show_help: bool,
     pub show_info: bool,
+    pub show_chapters: bool,
+    pub selected_chapter_index: usize,
+    pub cached_chapters: Option<ChapterList>,
 }
 
 impl App {
@@ -122,6 +127,9 @@ impl App {
             browse: BrowseState::new(),
             show_help: false,
             show_info: false,
+            show_chapters: false,
+            selected_chapter_index: 0,
+            cached_chapters: None,
         }
     }
 
@@ -143,6 +151,7 @@ impl App {
                         duration: Some(Duration::from_secs(45 * 60 + 32)),
                         audio_url: "https://example.com/ep1.mp3".to_string(),
                         played: false,
+                        chapters_url: None,
                     },
                     Episode {
                         title: "The Uncertainty Machine".to_string(),
@@ -151,6 +160,7 @@ impl App {
                         duration: Some(Duration::from_secs(52 * 60 + 15)),
                         audio_url: "https://example.com/ep2.mp3".to_string(),
                         played: true,
+                        chapters_url: None,
                     },
                     Episode {
                         title: "Numbers in the Wild".to_string(),
@@ -159,6 +169,7 @@ impl App {
                         duration: Some(Duration::from_secs(38 * 60 + 45)),
                         audio_url: "https://example.com/ep3.mp3".to_string(),
                         played: true,
+                        chapters_url: None,
                     },
                 ],
             },
@@ -174,6 +185,7 @@ impl App {
                         duration: Some(Duration::from_secs(28 * 60 + 12)),
                         audio_url: "https://example.com/ep4.mp3".to_string(),
                         played: false,
+                        chapters_url: None,
                     },
                     Episode {
                         title: "Designed to Last".to_string(),
@@ -182,6 +194,7 @@ impl App {
                         duration: Some(Duration::from_secs(32 * 60 + 50)),
                         audio_url: "https://example.com/ep5.mp3".to_string(),
                         played: false,
+                        chapters_url: None,
                     },
                 ],
             },
@@ -197,6 +210,7 @@ impl App {
                         duration: Some(Duration::from_secs(25 * 60)),
                         audio_url: "https://example.com/ep6.mp3".to_string(),
                         played: false,
+                        chapters_url: None,
                     },
                 ],
             },
@@ -308,5 +322,45 @@ impl App {
     pub fn cancel_search(&mut self) {
         self.input_mode = InputMode::Normal;
         self.browse.is_searching = false;
+    }
+
+    pub fn toggle_chapters(&mut self) {
+        self.show_chapters = !self.show_chapters;
+        if self.show_chapters {
+            self.selected_chapter_index = 0;
+            // Fetch chapters when opening popup
+            if let Some(episode) = self.selected_podcast()
+                .and_then(|p| p.episodes.get(self.selected_episode_index))
+            {
+                if let Some(chapters_url) = &episode.chapters_url {
+                    use crate::chapters;
+                    match chapters::fetch_chapters(chapters_url) {
+                        Ok(chapters) => {
+                            log::debug!("Cached {} chapters", chapters.chapters.len());
+                            self.cached_chapters = Some(chapters);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to fetch chapters: {}", e);
+                            self.cached_chapters = None;
+                        }
+                    }
+                }
+            }
+        } else {
+            // Clear cache when closing
+            self.cached_chapters = None;
+        }
+    }
+
+    pub fn move_chapter_up(&mut self) {
+        if self.selected_chapter_index > 0 {
+            self.selected_chapter_index -= 1;
+        }
+    }
+
+    pub fn move_chapter_down(&mut self, max_index: usize) {
+        if self.selected_chapter_index < max_index {
+            self.selected_chapter_index += 1;
+        }
     }
 }

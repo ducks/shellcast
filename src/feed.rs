@@ -5,24 +5,47 @@ use std::io::BufReader;
 use std::time::Duration;
 
 pub fn fetch_and_parse(url: &str) -> Result<Podcast, String> {
+    log::debug!("Fetching feed from: {}", url);
+
     let response = reqwest::blocking::get(url)
-        .map_err(|e| format!("Failed to fetch feed: {}", e))?;
+        .map_err(|e| {
+            log::error!("Failed to fetch feed {}: {}", url, e);
+            format!("Failed to fetch feed: {}", e)
+        })?;
+
+    log::debug!("Feed fetched successfully, attempting RSS parse...");
 
     // Try parsing as RSS first
     let reader = BufReader::new(response);
-    if let Ok(channel) = Channel::read_from(reader) {
-        return Ok(parse_rss(channel, url));
+    match Channel::read_from(reader) {
+        Ok(channel) => {
+            log::debug!("Successfully parsed as RSS feed");
+            return Ok(parse_rss(channel, url));
+        }
+        Err(e) => {
+            log::debug!("RSS parse failed: {}", e);
+        }
     }
 
     // Try parsing as Atom
+    log::debug!("Attempting Atom parse...");
     let response = reqwest::blocking::get(url)
-        .map_err(|e| format!("Failed to fetch feed: {}", e))?;
+        .map_err(|e| {
+            log::error!("Failed to re-fetch feed for Atom: {}", e);
+            format!("Failed to fetch feed: {}", e)
+        })?;
     let reader = BufReader::new(response);
-    if let Ok(feed) = AtomFeed::read_from(reader) {
-        return Ok(parse_atom(feed, url));
+    match AtomFeed::read_from(reader) {
+        Ok(feed) => {
+            log::debug!("Successfully parsed as Atom feed");
+            return Ok(parse_atom(feed, url));
+        }
+        Err(e) => {
+            log::error!("Atom parse failed: {}", e);
+        }
     }
 
-    Err("Failed to parse feed as RSS or Atom".to_string())
+    Err("Failed to parse feed as RSS or Atom. Check debug.log for details.".to_string())
 }
 
 /// Refresh a podcast feed, preserving played status of existing episodes
@@ -64,10 +87,29 @@ pub fn refresh_feed(podcast: &mut Podcast) -> Result<usize, String> {
 }
 
 fn parse_rss(channel: Channel, url: &str) -> Podcast {
+    log::debug!("Parsing RSS feed: {}, found {} episodes", channel.title(), channel.items().len());
+
     let episodes: Vec<Episode> = channel
         .items()
         .iter()
-        .map(|item| {
+        .enumerate()
+        .map(|(idx, item)| {
+            // Debug: Log extensions for first episode
+            if idx == 0 {
+                log::debug!("Extensions in first episode:");
+                for (namespace, extensions) in item.extensions() {
+                    log::debug!("  Namespace: {}", namespace);
+                    for (name, values) in extensions {
+                        log::debug!("    Tag: {} (count: {})", name, values.len());
+                        if name == "chapters" {
+                            for val in values {
+                                log::debug!("      Attrs: {:?}", val.attrs);
+                            }
+                        }
+                    }
+                }
+            }
+
             let duration = item
                 .itunes_ext()
                 .and_then(|ext| ext.duration())
@@ -78,6 +120,19 @@ fn parse_rss(channel: Channel, url: &str) -> Podcast {
                 .map(|e| e.url().to_string())
                 .unwrap_or_default();
 
+            // Extract podcast:chapters URL from extensions
+            let chapters_url = item
+                .extensions()
+                .get("podcast")
+                .and_then(|podcast_ext| podcast_ext.get("chapters"))
+                .and_then(|chapters| chapters.first())
+                .and_then(|chapter_elem| chapter_elem.attrs.get("url"))
+                .map(|s| s.to_string());
+
+            if let Some(ref chapters) = chapters_url {
+                log::debug!("Found chapters URL for '{}': {}", item.title().unwrap_or("Unknown"), chapters);
+            }
+
             Episode {
                 title: item.title().unwrap_or("Untitled").to_string(),
                 description: item.description().unwrap_or("").to_string(),
@@ -85,6 +140,7 @@ fn parse_rss(channel: Channel, url: &str) -> Podcast {
                 duration,
                 audio_url,
                 played: false,
+                chapters_url,
             }
         })
         .collect();
@@ -127,6 +183,7 @@ fn parse_atom(feed: AtomFeed, url: &str) -> Podcast {
                 duration: None, // Atom feeds don't typically have duration
                 audio_url,
                 played: false,
+                chapters_url: None, // Atom feeds don't typically have chapters
             }
         })
         .collect();

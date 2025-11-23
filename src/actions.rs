@@ -39,6 +39,7 @@ pub enum Action {
     Quit,
     ShowHelp,
     ShowInfo,
+    ShowChapters,
 }
 
 impl Action {
@@ -131,6 +132,9 @@ impl Action {
             }
             Action::ShowInfo => {
                 app.show_info = !app.show_info;
+            }
+            Action::ShowChapters => {
+                app.toggle_chapters();
             }
         }
     }
