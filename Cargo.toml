@@ -1,6 +1,6 @@
 [package]
 name = "shellcast"
-version = "20251122.0.0"
+version = "20251123.0.0"
 edition = "2024"
 
 [dependencies]
