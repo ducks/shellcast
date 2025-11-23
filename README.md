@@ -13,6 +13,7 @@ A terminal-based podcast player written in Rust.
 - **Episode Browser** - Browse episodes with publish dates in a clean two-pane TUI
 - **Episode Info** - View full episode descriptions and metadata in popup (i key)
 - **Chapter Support** - Navigate podcast chapters with timestamps (Podcasting 2.0 spec)
+- **Theming System** - Customizable color themes via TOML config (default, dark, gruvbox, or custom)
 - **Help Screen** - Built-in keybindings reference (? key)
 - **Audio Playback** - Stream and play podcast episodes with seek controls (±30s)
 - **Played Status** - Mark episodes as played/unplayed, synced to disk
@@ -24,45 +25,7 @@ A terminal-based podcast player written in Rust.
 
 ## Development Status
 
-Active development - core features implemented and working. See TODO section for planned enhancements.
-
-## Recent Changes
-
-### Latest - Chapter Support (2025-11-22)
-- **Podcasting 2.0 Chapters** - Full support for podcast chapters with timestamps
-- **Chapter Navigation** - Press `c` to view chapter list, `j/k` to navigate, Enter to jump
-- **Chapter Caching** - Chapters fetched once and cached for instant navigation
-- **Debug Logging** - Added detailed logging to `shellcast-debug.log` for feed parsing issues
-- **Feed Error Handling** - Better error messages when feeds fail to parse
-
-### Help, Info & Dates (2025-11-16)
-- **Help Screen** - Press `?` to view comprehensive keybindings reference
-- **Episode Info Popup** - Press `i` to view full episode description, publish date, and duration
-- **Publish Dates** - Episode list now shows publication dates for each episode
-- **Popup Navigation** - All popups close with `Esc` or their toggle key
-
-### Browse & Search (2025-11-16)
-- **Browse Mode** - Press `5` to discover new podcasts
-- **Podcast Search** - Search via gpodder.net's free API (no authentication required)
-- **Smart Deduplication** - Results deduplicated by normalized title + hostname
-- **Subscriber Rankings** - Results sorted by popularity, subscriber counts shown
-- **Auto-subscribe** - Press Enter on search results to instantly subscribe
-- **Improved Responsiveness** - Event polling reduced from 200ms to 50ms for snappier input
-- **Seek Controls** - Jump forward/backward 30 seconds during playback (h/l or arrow keys)
-
-### v20251115.3
-- Added played/unplayed status tracking with 'm' keybinding
-- Status persists across sessions
-- Visual indicators (● for unplayed, ○ for played)
-- Unplayed episode counts shown in podcast list
-
-### Earlier Releases
-- GitHub Actions workflow for automated releases
-- Audio playback with play/pause/stop controls
-- RSS and Atom feed parsing
-- Two-pane TUI with podcast and episode lists
-- Automatic persistence of subscriptions
-- Vim-style navigation keybindings
+Active development - core features implemented and working. See [CHANGELOG.md](CHANGELOG.md) for recent changes and TODO section for planned enhancements.
 
 ## Installation
 
@@ -93,6 +56,53 @@ The binary will be available at `target/release/shellcast`.
 11. Press `q` to quit
 
 Podcasts and playback status are automatically saved to `~/.config/shellcast/podcasts.json`.
+
+## Configuration
+
+### Theming
+
+Shellcast supports customizable color themes. Create a config file at `~/.config/shellcast/config.toml`:
+
+```toml
+[theme]
+# Use a built-in theme: "default", "dark", or "gruvbox"
+name = "default"
+```
+
+#### Built-in Themes
+
+- **default** - The classic shellcast blue theme with cyan accents
+- **dark** - High contrast theme with magenta and yellow highlights
+- **gruvbox** - Warm retro theme inspired by gruvbox color scheme
+
+#### Custom Themes
+
+For full customization, set `name = "custom"` and define your colors:
+
+```toml
+[theme]
+name = "custom"
+
+[theme.custom]
+selection_bg = "blue"
+selection_fg = "white"
+border_focused = "cyan"
+border_unfocused = "gray"
+text_normal = "white"
+text_played = "gray"
+text_unplayed = "white"
+status_bar_bg = "black"
+status_bar_fg = "white"
+popup_border = "cyan"
+popup_bg = "black"
+popup_fg = "white"
+episode_title = "white"
+episode_published = "gray"
+```
+
+Available colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `gray`, `darkgray`, `lightred`, `lightgreen`, `lightyellow`, `lightblue`, `lightmagenta`, `lightcyan`, `white`
+
+See `config.example.toml` for a complete reference.
 
 ## Testing
 
@@ -164,6 +174,7 @@ nix-shell
 - [x] **Episode info popup** (view descriptions and metadata)
 - [x] **Publish dates** (shown in episode list)
 - [x] **Chapter support** (Podcasting 2.0 chapters with navigation)
+- [x] **Theming system** (TOML config with built-in and custom themes)
 
 ### In Progress
 - [ ] Better error handling and user feedback
@@ -175,7 +186,6 @@ nix-shell
 - [ ] Episode queue
 - [ ] Episode artwork display
 - [ ] OPML import/export
-- [ ] Theming system
 - [ ] Better buffering status in UI
 - [ ] Podcast refresh/update functionality
 - [ ] Filter episodes (show unplayed only)
