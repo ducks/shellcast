@@ -328,11 +328,16 @@ impl App {
         self.show_chapters = !self.show_chapters;
         if self.show_chapters {
             self.selected_chapter_index = 0;
+            // Always clear cache first to prevent showing stale chapters
+            self.cached_chapters = None;
+
             // Fetch chapters when opening popup
             if let Some(episode) = self.selected_podcast()
                 .and_then(|p| p.episodes.get(self.selected_episode_index))
             {
+                log::debug!("Opening chapters for episode: {}", episode.title);
                 if let Some(chapters_url) = &episode.chapters_url {
+                    log::debug!("Found chapters_url: {}", chapters_url);
                     use crate::chapters;
                     match chapters::fetch_chapters(chapters_url) {
                         Ok(chapters) => {
@@ -344,7 +349,11 @@ impl App {
                             self.cached_chapters = None;
                         }
                     }
+                } else {
+                    log::debug!("Episode has no chapters_url");
                 }
+            } else {
+                log::error!("Could not find selected episode");
             }
         } else {
             // Clear cache when closing
