@@ -1,13 +1,14 @@
 use crate::app::{App, AppScreen, InputMode, PaneFocus};
 use crate::playback::Player;
+use crate::theme::Theme;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     widgets::{Block, Borders, Clear, Gauge, List, ListItem, Paragraph, Wrap},
     Frame,
 };
 
-pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player) {
+pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player, theme: &Theme) {
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -18,42 +19,42 @@ pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player) {
 
     match app.screen {
         AppScreen::Podcasts => {
-            draw_podcasts_screen(frame, app, main_layout[0]);
+            draw_podcasts_screen(frame, app, main_layout[0], theme);
         }
         AppScreen::Browse => {
-            draw_browse_screen(frame, app, main_layout[0]);
+            draw_browse_screen(frame, app, main_layout[0], theme);
         }
     }
 
-    draw_footer(frame, app, player, main_layout[1]);
+    draw_footer(frame, app, player, main_layout[1], theme);
 
     // Draw help popup on top if visible
     if app.show_help {
-        draw_help_popup(frame);
+        draw_help_popup(frame, theme);
     }
 
     // Draw info popup on top if visible
     if app.show_info {
-        draw_info_popup(frame, app);
+        draw_info_popup(frame, app, theme);
     }
 
     // Draw chapters popup on top if visible
     if app.show_chapters {
-        draw_chapters_popup(frame, app);
+        draw_chapters_popup(frame, app, theme);
     }
 }
 
-fn draw_podcasts_screen(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_podcasts_screen(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
 
-    draw_podcast_list(frame, app, chunks[0]);
-    draw_episode_list(frame, app, chunks[1]);
+    draw_podcast_list(frame, app, chunks[0], theme);
+    draw_episode_list(frame, app, chunks[1], theme);
 }
 
-fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let items: Vec<ListItem> = app
         .podcasts
         .iter()
@@ -67,19 +68,21 @@ fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
             };
             
             let style = if i == app.selected_podcast_index {
-                Style::default().add_modifier(Modifier::BOLD)
-            } else {
                 Style::default()
+                    .fg(theme.selection_fg_color())
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.text_normal_color())
             };
-            
+
             ListItem::new(label).style(style)
         })
         .collect();
 
     let border_style = if app.focus == PaneFocus::Left {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(theme.border_focused_color())
     } else {
-        Style::default()
+        Style::default().fg(theme.border_unfocused_color())
     };
 
     let list = List::new(items)
@@ -92,7 +95,8 @@ fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
         .highlight_symbol("➤ ")
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(theme.selection_bg_color())
+                .fg(theme.selection_fg_color())
                 .add_modifier(Modifier::BOLD),
         );
 
@@ -103,7 +107,7 @@ fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let items: Vec<ListItem> = if let Some(podcast) = app.selected_podcast() {
         podcast
             .episodes
@@ -126,13 +130,17 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
                 };
 
                 let label = format!("{} {}{}{}", marker, date_str, episode.title, duration_str);
-                
+
                 let style = if i == app.selected_episode_index {
-                    Style::default().add_modifier(Modifier::BOLD)
-                } else {
                     Style::default()
+                        .fg(theme.selection_fg_color())
+                        .add_modifier(Modifier::BOLD)
+                } else if episode.played {
+                    Style::default().fg(theme.text_played_color())
+                } else {
+                    Style::default().fg(theme.text_unplayed_color())
                 };
-                
+
                 ListItem::new(label).style(style)
             })
             .collect()
@@ -141,9 +149,9 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let border_style = if app.focus == PaneFocus::Right {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(theme.border_focused_color())
     } else {
-        Style::default()
+        Style::default().fg(theme.border_unfocused_color())
     };
 
     let title = if let Some(podcast) = app.selected_podcast() {
@@ -162,7 +170,8 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
         .highlight_symbol("➤ ")
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(theme.selection_bg_color())
+                .fg(theme.selection_fg_color())
                 .add_modifier(Modifier::BOLD),
         );
 
@@ -173,7 +182,7 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_browse_screen(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_browse_screen(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -186,7 +195,7 @@ fn draw_browse_screen(frame: &mut Frame, app: &App, area: Rect) {
     let search_block = Block::default()
         .title("Search Podcasts (gpodder.net)")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan));
+        .border_style(Style::default().fg(theme.border_focused_color()));
 
     let search_text = if app.browse.is_searching {
         format!("Search: {}█", app.browse.search_query)
@@ -225,12 +234,13 @@ fn draw_browse_screen(frame: &mut Frame, app: &App, area: Rect) {
             Block::default()
                 .title(title)
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Cyan)),
+                .border_style(Style::default().fg(theme.border_focused_color())),
         )
         .highlight_symbol("➤ ")
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(theme.selection_bg_color())
+                .fg(theme.selection_fg_color())
                 .add_modifier(Modifier::BOLD),
         );
 
@@ -241,8 +251,10 @@ fn draw_browse_screen(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
-    let block = Block::default().borders(Borders::TOP);
+fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect, theme: &Theme) {
+    let block = Block::default()
+        .borders(Borders::TOP)
+        .border_style(Style::default().fg(theme.border_unfocused_color()));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -250,7 +262,7 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
     if app.input_mode == InputMode::AddingFeed {
         let text = format!("Add Feed: {}", app.input_buffer);
         frame.render_widget(
-            Paragraph::new(text).style(Style::default().fg(Color::Yellow)),
+            Paragraph::new(text).style(Style::default().fg(theme.status_bar_fg_color())),
             inner
         );
         return;
@@ -280,7 +292,7 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
 
         // Progress bar
         let gauge = Gauge::default()
-            .gauge_style(Style::default().fg(Color::Cyan))
+            .gauge_style(Style::default().fg(theme.border_focused_color()))
             .ratio(ratio.min(1.0));
         frame.render_widget(gauge, footer_layout[0]);
 
@@ -288,7 +300,7 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
         if let Some(msg) = &app.status_message {
             // Show status message
             frame.render_widget(
-                Paragraph::new(msg.as_str()).style(Style::default().fg(Color::Yellow)),
+                Paragraph::new(msg.as_str()).style(Style::default().fg(theme.status_bar_fg_color())),
                 footer_layout[1]
             );
         } else {
@@ -316,7 +328,7 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
         // Keybindings
         let keybindings = "j/k: Navigate | Tab: Switch | Space: Pause | s: Stop | m: Mark | a: Add | d: Delete | q: Quit";
         frame.render_widget(
-            Paragraph::new(keybindings).style(Style::default().fg(Color::DarkGray)),
+            Paragraph::new(keybindings).style(Style::default().fg(theme.text_played_color())),
             footer_layout[2]
         );
     } else {
@@ -333,7 +345,7 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
         // Line 1: Status message (if present)
         if let Some(msg) = &app.status_message {
             frame.render_widget(
-                Paragraph::new(msg.as_str()).style(Style::default().fg(Color::Yellow)),
+                Paragraph::new(msg.as_str()).style(Style::default().fg(theme.status_bar_fg_color())),
                 footer_layout[0]
             );
         }
@@ -341,7 +353,7 @@ fn draw_footer(frame: &mut Frame, app: &App, player: &Player, area: Rect) {
         // Line 2: Keybindings (always visible)
         let keybindings = "j/k: Navigate | Tab: Switch | Space: Play | s: Stop | m: Mark | a: Add | d: Delete | ?: Help | q: Quit";
         frame.render_widget(
-            Paragraph::new(keybindings).style(Style::default().fg(Color::DarkGray)),
+            Paragraph::new(keybindings).style(Style::default().fg(theme.text_played_color())),
             footer_layout[1]
         );
     }
@@ -368,7 +380,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
-fn draw_help_popup(frame: &mut Frame) {
+fn draw_help_popup(frame: &mut Frame, theme: &Theme) {
     let area = centered_rect(70, 80, frame.area());
 
     let help_text = r#"
@@ -413,8 +425,10 @@ Help & Exit:
     let block = Block::default()
         .title(" Help - Press ? or Esc to close ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan))
-        .style(Style::default().bg(Color::Black));
+        .border_style(Style::default().fg(theme.popup_border_color()))
+        .style(Style::default()
+            .bg(theme.popup_bg_color())
+            .fg(theme.popup_fg_color()));
 
     let paragraph = Paragraph::new(help_text)
         .block(block)
@@ -424,7 +438,7 @@ Help & Exit:
     frame.render_widget(paragraph, area);
 }
 
-fn draw_info_popup(frame: &mut Frame, app: &App) {
+fn draw_info_popup(frame: &mut Frame, app: &App, theme: &Theme) {
     let area = centered_rect(70, 70, frame.area());
 
     // Get the currently selected episode's info
@@ -466,8 +480,10 @@ fn draw_info_popup(frame: &mut Frame, app: &App) {
     let block = Block::default()
         .title(" Episode Info - Press i or Esc to close ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan))
-        .style(Style::default().bg(Color::Black));
+        .border_style(Style::default().fg(theme.popup_border_color()))
+        .style(Style::default()
+            .bg(theme.popup_bg_color())
+            .fg(theme.popup_fg_color()));
 
     let paragraph = Paragraph::new(info_text)
         .block(block)
@@ -477,7 +493,7 @@ fn draw_info_popup(frame: &mut Frame, app: &App) {
     frame.render_widget(paragraph, area);
 }
 
-fn draw_chapters_popup(frame: &mut Frame, app: &App) {
+fn draw_chapters_popup(frame: &mut Frame, app: &App, theme: &Theme) {
     let area = centered_rect(70, 70, frame.area());
 
     let content = if let Some(chapter_list) = &app.cached_chapters {
@@ -522,8 +538,10 @@ fn draw_chapters_popup(frame: &mut Frame, app: &App) {
     let block = Block::default()
         .title(" Episode Chapters - Press c or Esc to close ")
         .borders(Borders::ALL)
-        .border_style(Style::default().fg(Color::Cyan))
-        .style(Style::default().bg(Color::Black));
+        .border_style(Style::default().fg(theme.popup_border_color()))
+        .style(Style::default()
+            .bg(theme.popup_bg_color())
+            .fg(theme.popup_fg_color()));
 
     let paragraph = Paragraph::new(content)
         .block(block)

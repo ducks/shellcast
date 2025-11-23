@@ -2,10 +2,12 @@ mod actions;
 mod app;
 mod browse;
 mod chapters;
+mod config;
 mod feed;
 mod keybindings;
 mod persistence;
 mod playback;
+mod theme;
 mod ui;
 
 use app::{App, InputMode};
@@ -331,6 +333,11 @@ fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout());
     let mut terminal = Terminal::new(backend)?;
 
+    // Load config and theme
+    let config = config::Config::load();
+    let theme = config.get_theme();
+    log::info!("Using theme: {}", config.theme.name);
+
     // Load podcasts from file, or use empty app if none exist
     let mut app = match persistence::load_podcasts() {
         Ok(podcasts) => {
@@ -346,7 +353,7 @@ fn main() -> Result<()> {
     let mut player = Player::new().expect("Failed to initialize audio player");
 
     loop {
-        terminal.draw(|f| ui::draw_ui(f, &app, &player))?;
+        terminal.draw(|f| ui::draw_ui(f, &app, &player, &theme))?;
 
         if event::poll(std::time::Duration::from_millis(50))?
             && let Event::Key(key) = event::read()?
