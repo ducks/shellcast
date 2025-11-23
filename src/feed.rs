@@ -101,9 +101,10 @@ fn parse_rss(channel: Channel, url: &str) -> Podcast {
                     log::debug!("  Namespace: {}", namespace);
                     for (name, values) in extensions {
                         log::debug!("    Tag: {} (count: {})", name, values.len());
-                        if name == "chapters" {
-                            for val in values {
-                                log::debug!("      Attrs: {:?}", val.attrs);
+                        for val in values {
+                            log::debug!("      Attrs: {:?}", val.attrs);
+                            if let Some(text) = &val.value {
+                                log::debug!("      Value: {}", text);
                             }
                         }
                     }

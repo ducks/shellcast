@@ -134,6 +134,7 @@ fn handle_normal_key(
         }
         if app.show_chapters {
             app.show_chapters = false;
+            app.cached_chapters = None; // Clear cache when closing with Escape
             return false;
         }
     }
