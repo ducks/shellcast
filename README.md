@@ -12,6 +12,7 @@ A terminal-based podcast player written in Rust.
 - **Feed Management** - Subscribe to podcast RSS/Atom feeds (RSS and Atom format support)
 - **Episode Browser** - Browse episodes with publish dates in a clean two-pane TUI
 - **Episode Info** - View full episode descriptions and metadata in popup (i key)
+- **Chapter Support** - Navigate podcast chapters with timestamps (Podcasting 2.0 spec)
 - **Help Screen** - Built-in keybindings reference (? key)
 - **Audio Playback** - Stream and play podcast episodes with seek controls (±30s)
 - **Played Status** - Mark episodes as played/unplayed, synced to disk
@@ -27,7 +28,14 @@ Active development - core features implemented and working. See TODO section for
 
 ## Recent Changes
 
-### Latest - Help, Info & Dates (2025-11-16)
+### Latest - Chapter Support (2025-11-22)
+- **Podcasting 2.0 Chapters** - Full support for podcast chapters with timestamps
+- **Chapter Navigation** - Press `c` to view chapter list, `j/k` to navigate, Enter to jump
+- **Chapter Caching** - Chapters fetched once and cached for instant navigation
+- **Debug Logging** - Added detailed logging to `shellcast-debug.log` for feed parsing issues
+- **Feed Error Handling** - Better error messages when feeds fail to parse
+
+### Help, Info & Dates (2025-11-16)
 - **Help Screen** - Press `?` to view comprehensive keybindings reference
 - **Episode Info Popup** - Press `i` to view full episode description, publish date, and duration
 - **Publish Dates** - Episode list now shows publication dates for each episode
@@ -129,6 +137,7 @@ nix-shell
 ### Help & Info
 - `?` - Show help screen with all keybindings
 - `i` - Show episode info/description popup
+- `c` - Show episode chapters (if available)
 - `Esc` - Close popups
 - `q` - Quit application
 
@@ -154,6 +163,7 @@ nix-shell
 - [x] **Help screen** (comprehensive keybindings reference)
 - [x] **Episode info popup** (view descriptions and metadata)
 - [x] **Publish dates** (shown in episode list)
+- [x] **Chapter support** (Podcasting 2.0 chapters with navigation)
 
 ### In Progress
 - [ ] Better error handling and user feedback
@@ -165,7 +175,6 @@ nix-shell
 - [ ] Episode queue
 - [ ] Episode artwork display
 - [ ] OPML import/export
-- [ ] Chapter support
 - [ ] Theming system
 - [ ] Better buffering status in UI
 - [ ] Podcast refresh/update functionality
