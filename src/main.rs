@@ -188,6 +188,22 @@ fn handle_normal_key(
 
     if let Some(action) = keymap.get_action(&binding) {
         if matches!(action, Action::Quit) {
+            // Save current playback position before quitting
+            if app.playback.start.is_some() {
+                let current_position = player.get_position().as_secs();
+                if let Some(podcast) = app.podcasts.get_mut(app.selected_podcast_index) {
+                    if let Some(episode) = podcast.episodes.get_mut(app.selected_episode_index) {
+                        episode.position_secs = current_position;
+                        log::debug!("Saved position on quit: {}s for episode '{}'", current_position, episode.title);
+                    }
+                }
+            }
+
+            // Save to disk immediately before quitting
+            if let Err(e) = persistence::save_podcasts(&app.podcasts) {
+                log::error!("Failed to save on quit: {}", e);
+            }
+
             return true;
         }
 
@@ -202,13 +218,23 @@ fn handle_normal_key(
                     // Get episode info before borrowing
                     let episode_info = app.selected_podcast()
                         .and_then(|p| p.episodes.get(app.selected_episode_index))
-                        .map(|e| (e.audio_url.clone(), e.title.clone(), e.duration));
+                        .map(|e| (e.audio_url.clone(), e.title.clone(), e.duration, e.position_secs));
 
-                    if let Some((audio_url, title, duration)) = episode_info {
+                    if let Some((audio_url, title, duration, position_secs)) = episode_info {
                         if !audio_url.is_empty() {
                             match player.play(&audio_url) {
                                 Ok(_) => {
-                                    app.status_message = Some(format!("Playing: {}", title));
+                                    // Resume from saved position if available
+                                    if position_secs > 0 {
+                                        if let Err(e) = player.seek_forward(position_secs) {
+                                            log::warn!("Failed to seek to saved position: {}", e);
+                                        } else {
+                                            app.status_message = Some(format!("Resuming: {} at {}:{:02}",
+                                                title, position_secs / 60, position_secs % 60));
+                                        }
+                                    } else {
+                                        app.status_message = Some(format!("Playing: {}", title));
+                                    }
                                     app.playback.url = Some(audio_url);
 
                                     // Start playback tracking
@@ -257,6 +283,18 @@ fn handle_normal_key(
                 }
             }
             Action::Stop => {
+                // Save current playback position before stopping
+                if app.playback.start.is_some() {
+                    let current_position = player.get_position().as_secs();
+                    if let Some(podcast) = app.podcasts.get_mut(app.selected_podcast_index) {
+                        if let Some(episode) = podcast.episodes.get_mut(app.selected_episode_index) {
+                            episode.position_secs = current_position;
+                            app.needs_save = true;
+                            log::debug!("Saved position: {}s for episode '{}'", current_position, episode.title);
+                        }
+                    }
+                }
+
                 player.stop();
                 app.status_message = Some("Stopped".to_string());
                 app.playback.url = None;

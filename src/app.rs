@@ -21,6 +21,8 @@ pub struct Episode {
     pub audio_url: String,
     pub played: bool,
     pub chapters_url: Option<String>,
+    #[serde(default)]
+    pub position_secs: u64,
 }
 
 // Custom serialization for Option<Duration>
@@ -152,6 +154,7 @@ impl App {
                         audio_url: "https://example.com/ep1.mp3".to_string(),
                         played: false,
                         chapters_url: None,
+                        position_secs: 0,
                     },
                     Episode {
                         title: "The Uncertainty Machine".to_string(),
@@ -161,6 +164,7 @@ impl App {
                         audio_url: "https://example.com/ep2.mp3".to_string(),
                         played: true,
                         chapters_url: None,
+                        position_secs: 0,
                     },
                     Episode {
                         title: "Numbers in the Wild".to_string(),
@@ -170,6 +174,7 @@ impl App {
                         audio_url: "https://example.com/ep3.mp3".to_string(),
                         played: true,
                         chapters_url: None,
+                        position_secs: 0,
                     },
                 ],
             },
@@ -186,6 +191,7 @@ impl App {
                         audio_url: "https://example.com/ep4.mp3".to_string(),
                         played: false,
                         chapters_url: None,
+                        position_secs: 0,
                     },
                     Episode {
                         title: "Designed to Last".to_string(),
@@ -195,6 +201,7 @@ impl App {
                         audio_url: "https://example.com/ep5.mp3".to_string(),
                         played: false,
                         chapters_url: None,
+                        position_secs: 0,
                     },
                 ],
             },
@@ -211,6 +218,7 @@ impl App {
                         audio_url: "https://example.com/ep6.mp3".to_string(),
                         played: false,
                         chapters_url: None,
+                        position_secs: 0,
                     },
                 ],
             },
