@@ -1,6 +1,7 @@
 mod actions;
 mod app;
 mod browse;
+mod chapters;
 mod feed;
 mod keybindings;
 mod persistence;
@@ -18,6 +19,8 @@ use crossterm::{
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
+use simplelog::*;
+use std::fs::File;
 use std::io::{Result, stdout};
 
 fn handle_adding_feed_input(app: &mut App, key: KeyEvent) {
@@ -128,6 +131,52 @@ fn handle_normal_key(
         if app.show_info {
             app.show_info = false;
             return false;
+        }
+        if app.show_chapters {
+            app.show_chapters = false;
+            return false;
+        }
+    }
+
+    // Handle chapter navigation when chapters popup is visible
+    if app.show_chapters {
+        match key.code {
+            KeyCode::Char('j') | KeyCode::Down => {
+                // Use cached chapters to get max index
+                if let Some(chapter_list) = &app.cached_chapters {
+                    let max_idx = chapter_list.chapters.len().saturating_sub(1);
+                    app.move_chapter_down(max_idx);
+                }
+                return false;
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                app.move_chapter_up();
+                return false;
+            }
+            KeyCode::Enter => {
+                // Jump to selected chapter from cache
+                if let Some(chapter_list) = &app.cached_chapters {
+                    if let Some(chapter) = chapter_list.chapters.get(app.selected_chapter_index) {
+                        let start_secs = chapter.start_time as u64;
+                        // Seek to the chapter start time
+                        if app.playback.start.is_some() {
+                            // Calculate current position and seek relative to it
+                            let current_pos = player.get_position().as_secs();
+                            if start_secs > current_pos {
+                                let _ = player.seek_forward(start_secs - current_pos);
+                            } else if start_secs < current_pos {
+                                let _ = player.seek_backward(current_pos - start_secs);
+                            }
+                            app.status_message = Some(format!("Jumped to: {}", chapter.title));
+                        } else {
+                            app.status_message = Some("Start playback first".to_string());
+                        }
+                    }
+                }
+                app.show_chapters = false;
+                return false;
+            }
+            _ => {}
         }
     }
 
@@ -265,6 +314,16 @@ fn handle_normal_key(
 }
 
 fn main() -> Result<()> {
+    // Initialize logging
+    CombinedLogger::init(vec![WriteLogger::new(
+        LevelFilter::Debug,
+        Config::default(),
+        File::create("shellcast-debug.log").unwrap(),
+    )])
+    .unwrap();
+
+    log::info!("Shellcast starting...");
+
     enable_raw_mode()?;
     execute!(stdout(), EnterAlternateScreen)?;
 

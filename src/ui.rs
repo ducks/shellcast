@@ -36,6 +36,11 @@ pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player) {
     if app.show_info {
         draw_info_popup(frame, app);
     }
+
+    // Draw chapters popup on top if visible
+    if app.show_chapters {
+        draw_chapters_popup(frame, app);
+    }
 }
 
 fn draw_podcasts_screen(frame: &mut Frame, app: &App, area: Rect) {
@@ -393,6 +398,7 @@ Management:
   a              Add new podcast feed (enter URL)
   d              Delete selected podcast
   i              Show episode info/description
+  c              Show episode chapters (if available)
 
 Help & Exit:
   ?              Toggle this help screen
@@ -466,6 +472,62 @@ fn draw_info_popup(frame: &mut Frame, app: &App) {
     let paragraph = Paragraph::new(info_text)
         .block(block)
         .wrap(Wrap { trim: true })
+        .alignment(Alignment::Left);
+
+    frame.render_widget(paragraph, area);
+}
+
+fn draw_chapters_popup(frame: &mut Frame, app: &App) {
+    let area = centered_rect(70, 70, frame.area());
+
+    let content = if let Some(chapter_list) = &app.cached_chapters {
+        if chapter_list.chapters.is_empty() {
+            "No chapters available for this episode.".to_string()
+        } else {
+            let episode = app.selected_podcast()
+                .and_then(|p| p.episodes.get(app.selected_episode_index));
+
+            // Build chapter list with selection
+            let mut lines = vec![
+                format!("Episode: {}", episode.map(|e| e.title.as_str()).unwrap_or("Unknown")),
+                String::new(),
+                "Chapters:".to_string(),
+                String::new(),
+            ];
+
+            for (idx, chapter) in chapter_list.chapters.iter().enumerate() {
+                let mins = (chapter.start_time / 60.0) as u64;
+                let secs = (chapter.start_time % 60.0) as u64;
+                let prefix = if idx == app.selected_chapter_index {
+                    "▶ "
+                } else {
+                    "  "
+                };
+                lines.push(format!("{}{:02}:{:02} - {}", prefix, mins, secs, chapter.title));
+            }
+
+            lines.push(String::new());
+            lines.push("Navigation: j/k to move, Enter to jump, c or Esc to close".to_string());
+
+            lines.join("\n")
+        }
+    } else {
+        "No chapters available for this episode.".to_string()
+    };
+
+    // Clear the area
+    frame.render_widget(Clear, area);
+
+    // Draw the chapters popup
+    let block = Block::default()
+        .title(" Episode Chapters - Press c or Esc to close ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan))
+        .style(Style::default().bg(Color::Black));
+
+    let paragraph = Paragraph::new(content)
+        .block(block)
+        .wrap(Wrap { trim: false })
         .alignment(Alignment::Left);
 
     frame.render_widget(paragraph, area);

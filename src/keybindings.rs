@@ -47,6 +47,7 @@ impl KeyMap {
         self.bind(KeyBinding::new(KeyCode::Char('q')), Action::Quit);
         self.bind(KeyBinding::new(KeyCode::Char('?')), Action::ShowHelp);
         self.bind(KeyBinding::new(KeyCode::Char('i')), Action::ShowInfo);
+        self.bind(KeyBinding::new(KeyCode::Char('c')), Action::ShowChapters);
 
         // Screen switching (like cmus)
         self.bind(KeyBinding::new(KeyCode::Char('1')), Action::SwitchToPodcasts);
