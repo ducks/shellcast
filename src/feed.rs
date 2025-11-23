@@ -4,6 +4,20 @@ use rss::Channel;
 use std::io::BufReader;
 use std::time::Duration;
 
+/// Convert HTML description to plain text
+fn html_to_text(html: &str) -> String {
+    if html.is_empty() {
+        return String::new();
+    }
+
+    // Use html2text to convert HTML to readable plain text
+    // Width of 80 characters for good wrapping in the terminal
+    let result = html2text::from_read(html.as_bytes(), 80);
+
+    // Trim excessive whitespace
+    result.trim().to_string()
+}
+
 pub fn fetch_and_parse(url: &str) -> Result<Podcast, String> {
     log::debug!("Fetching feed from: {}", url);
 
@@ -136,7 +150,7 @@ fn parse_rss(channel: Channel, url: &str) -> Podcast {
 
             Episode {
                 title: item.title().unwrap_or("Untitled").to_string(),
-                description: item.description().unwrap_or("").to_string(),
+                description: html_to_text(item.description().unwrap_or("")),
                 published: item.pub_date().unwrap_or("Unknown").to_string(),
                 duration,
                 audio_url,
@@ -148,7 +162,7 @@ fn parse_rss(channel: Channel, url: &str) -> Podcast {
 
     Podcast {
         title: channel.title().to_string(),
-        description: channel.description().to_string(),
+        description: html_to_text(channel.description()),
         url: url.to_string(),
         episodes,
     }
@@ -179,7 +193,7 @@ fn parse_atom(feed: AtomFeed, url: &str) -> Podcast {
 
             Episode {
                 title: entry.title().value.clone(),
-                description: entry.summary().map(|s| s.value.clone()).unwrap_or_default(),
+                description: html_to_text(&entry.summary().map(|s| s.value.clone()).unwrap_or_default()),
                 published,
                 duration: None, // Atom feeds don't typically have duration
                 audio_url,
@@ -191,7 +205,7 @@ fn parse_atom(feed: AtomFeed, url: &str) -> Podcast {
 
     Podcast {
         title: feed.title().value.clone(),
-        description: feed.subtitle().map(|s| s.value.clone()).unwrap_or_default(),
+        description: html_to_text(&feed.subtitle().map(|s| s.value.clone()).unwrap_or_default()),
         url: url.to_string(),
         episodes,
     }
