@@ -1,5 +1,6 @@
 use crate::app::{App, AppScreen, InputMode, PaneFocus};
 use crate::playback::Player;
+use crate::theme::Theme;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -7,7 +8,7 @@ use ratatui::{
     Frame,
 };
 
-pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player) {
+pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player, theme: &Theme) {
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -18,42 +19,42 @@ pub fn draw_ui(frame: &mut Frame, app: &App, player: &Player) {
 
     match app.screen {
         AppScreen::Podcasts => {
-            draw_podcasts_screen(frame, app, main_layout[0]);
+            draw_podcasts_screen(frame, app, main_layout[0], theme);
         }
         AppScreen::Browse => {
-            draw_browse_screen(frame, app, main_layout[0]);
+            draw_browse_screen(frame, app, main_layout[0], theme);
         }
     }
 
-    draw_footer(frame, app, player, main_layout[1]);
+    draw_footer(frame, app, player, main_layout[1], theme);
 
     // Draw help popup on top if visible
     if app.show_help {
-        draw_help_popup(frame);
+        draw_help_popup(frame, theme);
     }
 
     // Draw info popup on top if visible
     if app.show_info {
-        draw_info_popup(frame, app);
+        draw_info_popup(frame, app, theme);
     }
 
     // Draw chapters popup on top if visible
     if app.show_chapters {
-        draw_chapters_popup(frame, app);
+        draw_chapters_popup(frame, app, theme);
     }
 }
 
-fn draw_podcasts_screen(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_podcasts_screen(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
         .split(area);
 
-    draw_podcast_list(frame, app, chunks[0]);
-    draw_episode_list(frame, app, chunks[1]);
+    draw_podcast_list(frame, app, chunks[0], theme);
+    draw_episode_list(frame, app, chunks[1], theme);
 }
 
-fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let items: Vec<ListItem> = app
         .podcasts
         .iter()
@@ -67,19 +68,21 @@ fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
             };
             
             let style = if i == app.selected_podcast_index {
-                Style::default().add_modifier(Modifier::BOLD)
-            } else {
                 Style::default()
+                    .fg(theme.selection_fg_color())
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(theme.text_normal_color())
             };
-            
+
             ListItem::new(label).style(style)
         })
         .collect();
 
     let border_style = if app.focus == PaneFocus::Left {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(theme.border_focused_color())
     } else {
-        Style::default()
+        Style::default().fg(theme.border_unfocused_color())
     };
 
     let list = List::new(items)
@@ -92,7 +95,8 @@ fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
         .highlight_symbol("➤ ")
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(theme.selection_bg_color())
+                .fg(theme.selection_fg_color())
                 .add_modifier(Modifier::BOLD),
         );
 
@@ -103,7 +107,7 @@ fn draw_podcast_list(frame: &mut Frame, app: &App, area: Rect) {
     );
 }
 
-fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
+fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect, theme: &Theme) {
     let items: Vec<ListItem> = if let Some(podcast) = app.selected_podcast() {
         podcast
             .episodes
@@ -126,13 +130,17 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
                 };
 
                 let label = format!("{} {}{}{}", marker, date_str, episode.title, duration_str);
-                
+
                 let style = if i == app.selected_episode_index {
-                    Style::default().add_modifier(Modifier::BOLD)
-                } else {
                     Style::default()
+                        .fg(theme.selection_fg_color())
+                        .add_modifier(Modifier::BOLD)
+                } else if episode.played {
+                    Style::default().fg(theme.text_played_color())
+                } else {
+                    Style::default().fg(theme.text_unplayed_color())
                 };
-                
+
                 ListItem::new(label).style(style)
             })
             .collect()
@@ -141,9 +149,9 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let border_style = if app.focus == PaneFocus::Right {
-        Style::default().fg(Color::Cyan)
+        Style::default().fg(theme.border_focused_color())
     } else {
-        Style::default()
+        Style::default().fg(theme.border_unfocused_color())
     };
 
     let title = if let Some(podcast) = app.selected_podcast() {
@@ -162,7 +170,8 @@ fn draw_episode_list(frame: &mut Frame, app: &App, area: Rect) {
         .highlight_symbol("➤ ")
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(theme.selection_bg_color())
+                .fg(theme.selection_fg_color())
                 .add_modifier(Modifier::BOLD),
         );
 
