@@ -1,11 +1,13 @@
 use std::fs::File;
-use std::io::Write as _;
+use std::io::{BufReader, Write as _};
 use tempfile::NamedTempFile;
 
 pub struct Player {
     temp_file: Option<NamedTempFile>,
     sink: Option<rodio::Sink>,
     stream_handle: rodio::OutputStream,
+    // Keep the response body alive for streaming
+    _http_body: Option<Box<dyn std::io::Read + Send>>,
 }
 
 impl Player {
@@ -18,6 +20,7 @@ impl Player {
             temp_file: None,
             sink: None,
             stream_handle,
+            _http_body: None,
         })
     }
 
@@ -32,26 +35,85 @@ impl Player {
             url.to_string()
         };
 
-        // Fetch the audio file
-        let response = reqwest::blocking::get(&actual_url)
+        log::info!("Starting playback from URL: {}", actual_url);
+
+        // Create temp file first
+        let temp_file = NamedTempFile::new()
+            .map_err(|e| format!("Failed to create temp file: {}", e))?;
+        let temp_path = temp_file.path().to_path_buf();
+
+        // Clone URL for the thread
+        let url_for_thread = actual_url.clone();
+
+        // Download first 10MB to buffer, then continue in background
+        log::info!("Fetching initial buffer...");
+        let mut response = reqwest::blocking::get(&url_for_thread)
             .map_err(|e| format!("Failed to fetch audio: {}", e))?;
 
-        let bytes = response.bytes()
-            .map_err(|e| format!("Failed to read audio data: {}", e))?;
+        // Buffer 10MB
+        let buffer_size = 10 * 1024 * 1024; // 10MB
+        let mut initial_buffer = Vec::with_capacity(buffer_size);
+        let mut total_read = 0;
 
-        // Save to temp file
-        let mut temp_file = NamedTempFile::new()
+        use std::io::Read;
+        let mut chunk_buffer = vec![0u8; 8192];
+        while total_read < buffer_size {
+            match response.read(&mut chunk_buffer) {
+                Ok(0) => break, // EOF
+                Ok(n) => {
+                    initial_buffer.extend_from_slice(&chunk_buffer[..n]);
+                    total_read += n;
+                }
+                Err(e) => return Err(format!("Failed to buffer audio: {}", e)),
+            }
+        }
+
+        log::info!("Initial buffer complete: {} bytes", total_read);
+
+        // Write initial buffer to file
+        let mut file = File::create(temp_file.path())
             .map_err(|e| format!("Failed to create temp file: {}", e))?;
+        file.write_all(&initial_buffer)
+            .map_err(|e| format!("Failed to write initial buffer: {}", e))?;
 
-        temp_file.write_all(&bytes)
-            .map_err(|e| format!("Failed to write temp file: {}", e))?;
+        // Spawn background thread to download the rest
+        std::thread::spawn(move || {
+            log::info!("Background download continuing...");
+            let mut file = match std::fs::OpenOptions::new().append(true).open(&temp_path) {
+                Ok(f) => f,
+                Err(e) => {
+                    log::error!("Failed to open file for appending: {}", e);
+                    return;
+                }
+            };
 
-        // Open the file for playback - using try_from with File
-        let file = File::open(temp_file.path())
+            let mut chunk_buffer = vec![0u8; 8192];
+            loop {
+                match response.read(&mut chunk_buffer) {
+                    Ok(0) => {
+                        log::info!("Background download complete");
+                        break;
+                    }
+                    Ok(n) => {
+                        if let Err(e) = file.write_all(&chunk_buffer[..n]) {
+                            log::error!("Failed to write chunk: {}", e);
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        log::error!("Failed to read chunk: {}", e);
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Open the file for playback with enough buffered data
+        let playback_file = File::open(temp_file.path())
             .map_err(|e| format!("Failed to open temp file: {}", e))?;
 
-        // Use try_from instead of new to enable backward seeking
-        let source = rodio::Decoder::try_from(file)
+        // Decode with seeking support
+        let source = rodio::Decoder::new(BufReader::new(playback_file))
             .map_err(|e| format!("Failed to decode audio: {}", e))?;
 
         // Create sink using existing stream
@@ -60,6 +122,8 @@ impl Player {
 
         self.sink = Some(sink);
         self.temp_file = Some(temp_file);
+
+        log::info!("Playback started with buffering");
 
         Ok(())
     }
