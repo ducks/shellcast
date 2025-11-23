@@ -156,6 +156,7 @@ fn parse_rss(channel: Channel, url: &str) -> Podcast {
                 audio_url,
                 played: false,
                 chapters_url,
+                position_secs: 0,
             }
         })
         .collect();
@@ -199,6 +200,7 @@ fn parse_atom(feed: AtomFeed, url: &str) -> Podcast {
                 audio_url,
                 played: false,
                 chapters_url: None, // Atom feeds don't typically have chapters
+                position_secs: 0,
             }
         })
         .collect();
