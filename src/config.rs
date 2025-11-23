@@ -15,6 +15,10 @@ pub struct ThemeConfig {
     #[serde(default = "default_theme_name")]
     pub name: String,
 
+    /// Override accent color for built-in themes
+    #[serde(default)]
+    pub accent: Option<String>,
+
     /// Custom theme settings (only used if name = "custom")
     #[serde(default)]
     pub custom: Option<Theme>,
@@ -28,6 +32,7 @@ impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
             name: "default".to_string(),
+            accent: None,
             custom: None,
         }
     }
@@ -99,7 +104,7 @@ impl Config {
 
     /// Get the active theme based on config
     pub fn get_theme(&self) -> Theme {
-        match self.theme.name.as_str() {
+        let mut theme = match self.theme.name.as_str() {
             "custom" => {
                 if let Some(custom) = &self.theme.custom {
                     custom.clone()
@@ -109,6 +114,13 @@ impl Config {
                 }
             }
             name => Theme::by_name(name),
+        };
+
+        // Apply accent color override if specified
+        if let Some(accent) = &self.theme.accent {
+            theme.apply_accent(accent);
         }
+
+        theme
     }
 }

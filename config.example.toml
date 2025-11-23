@@ -2,7 +2,9 @@
 # Copy this file to ~/.config/shellcast/config.toml to customize
 
 [theme]
-# Built-in themes: "default", "dark", "gruvbox", or "custom"
+# Built-in themes:
+#   "default", "dark", "gruvbox", "solarized", "solarized-light",
+#   "dracula", "nord", "monokai", "tokyo-night", "catppuccin", or "custom"
 name = "default"
 
 # Example custom theme (only used if name = "custom")
@@ -22,6 +24,27 @@ name = "default"
 # episode_title = "white"
 # episode_published = "gray"
 
-# Available colors:
-# black, red, green, yellow, blue, magenta, cyan, gray, darkgray,
-# lightred, lightgreen, lightyellow, lightblue, lightmagenta, lightcyan, white
+# Available color formats:
+#
+# Named colors (use your terminal's theme definition):
+#   black, red, green, yellow, blue, magenta, cyan, gray, darkgray,
+#   lightred, lightgreen, lightyellow, lightblue, lightmagenta, lightcyan, white
+#
+# Hex colors (true color):
+#   "#ff0000" or "ff0000" - full 6-digit hex
+#   "#f00" or "f00" - short 3-digit hex
+#   Example: selection_bg = "#5f87af"
+#
+# RGB colors (true color):
+#   "rgb(255, 0, 0)" - explicit RGB values
+#   Example: border_focused = "rgb(95, 135, 175)"
+#
+# Terminal palette indices (0-255):
+#   "0" through "15" - standard ANSI colors (uses your terminal theme)
+#   "16" through "255" - extended colors
+#   Example: selection_bg = "12" (uses color 12 from your terminal theme)
+#
+# Terminal defaults:
+#   "reset" - use terminal's default foreground/background color
+#
+# This allows you to leverage your existing terminal theme or define precise colors!

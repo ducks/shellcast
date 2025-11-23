@@ -6,7 +6,7 @@ All notable changes to shellcast will be documented in this file.
 
 ### Theming System (2025-11-23)
 - **TOML Configuration** - Config file support at `~/.config/shellcast/config.toml`
-- **Built-in Themes** - Three themes included: default, dark, and gruvbox
+- **Built-in Themes** - Ten themes included: default, dark, gruvbox, solarized (dark & light), dracula, nord, monokai, tokyo-night, and catppuccin
 - **Custom Themes** - Create your own color schemes with full customization
 - **Theme Colors** - Customizable selection, borders, text states, popups, and more
 - **Example Config** - See `config.example.toml` for all available options

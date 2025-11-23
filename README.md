@@ -65,15 +65,22 @@ Shellcast supports customizable color themes. Create a config file at `~/.config
 
 ```toml
 [theme]
-# Use a built-in theme: "default", "dark", or "gruvbox"
+# Use a built-in theme
 name = "default"
 ```
 
 #### Built-in Themes
 
-- **default** - The classic shellcast blue theme with cyan accents
+- **default** - Classic shellcast blue theme with cyan accents
 - **dark** - High contrast theme with magenta and yellow highlights
-- **gruvbox** - Warm retro theme inspired by gruvbox color scheme
+- **gruvbox** - Warm retro theme with yellow accents
+- **solarized** / **solarized-dark** - Solarized dark with blue and cyan
+- **solarized-light** - Solarized light theme
+- **dracula** - Popular dark theme with purple and pink accents
+- **nord** - Cool arctic-inspired theme with blues and cyans
+- **monokai** - Classic monokai with yellow and green highlights
+- **tokyo-night** - Modern dark theme with purple and blue
+- **catppuccin** - Pastel theme with soft blues and purples
 
 #### Custom Themes
 
@@ -100,9 +107,14 @@ episode_title = "white"
 episode_published = "gray"
 ```
 
-Available colors: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `gray`, `darkgray`, `lightred`, `lightgreen`, `lightyellow`, `lightblue`, `lightmagenta`, `lightcyan`, `white`
+**Color Formats:**
+- **Named colors**: `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `gray`, etc.
+- **Hex colors**: `"#ff0000"`, `"#f00"`, `"5f87af"`
+- **RGB values**: `"rgb(255, 0, 0)"`
+- **Terminal palette**: `"0"` through `"255"` (use your terminal's theme colors)
+- **Terminal default**: `"reset"`
 
-See `config.example.toml` for a complete reference.
+See `config.example.toml` for a complete reference and examples.
 
 ## Testing
 
