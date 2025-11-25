@@ -346,7 +346,7 @@ fn handle_normal_key(
                 }
             }
             _ => {
-                action.execute(app);
+                action.execute(app, player);
             }
         }
     }

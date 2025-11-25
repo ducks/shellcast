@@ -188,4 +188,8 @@ impl Player {
             .map(|s| s.get_pos())
             .unwrap_or(std::time::Duration::ZERO)
     }
+
+    pub fn get_temp_file_path(&self) -> Option<std::path::PathBuf> {
+        self.temp_file.as_ref().map(|f| f.path().to_path_buf())
+    }
 }
