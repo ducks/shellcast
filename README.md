@@ -7,7 +7,7 @@ A terminal-based podcast player written in Rust.
 
 ![Main TUI view of shellcast](screenshots/main.png)
 
-![info view for podcast in shellcast](screenshots/.png)
+![info view for podcast in shellcast](screenshots/info.png)
 
 ![search view for podcast in shellcast](screenshots/search.png)
 
