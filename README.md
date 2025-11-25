@@ -11,6 +11,8 @@ A terminal-based podcast player written in Rust.
 
 ![search view for podcast in shellcast](screenshots/search.png)
 
+![chatpers overlay for podcast episode](screenshots/chapters.png)
+
 ## Features
 
 - **Podcast Discovery** - Browse and search thousands of podcasts via gpodder.net (free, no API keys required)
