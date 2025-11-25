@@ -332,11 +332,27 @@ impl App {
         self.browse.is_searching = false;
     }
 
-    pub fn toggle_chapters(&mut self) {
-        self.show_chapters = !self.show_chapters;
+    pub fn toggle_chapters(&mut self, audio_path: Option<&std::path::Path>) {
         if self.show_chapters {
+            // Close chapters popup
+            self.show_chapters = false;
+            self.cached_chapters = None;
+        } else {
+            // Only show chapters for currently playing episode
+            if self.playback.url.is_none() {
+                self.status_message = Some("Start playback first".to_string());
+                return;
+            }
+
+            // Check if selected episode is the one currently playing
+            let selected_url = self.selected_episode_url();
+            if selected_url.as_ref() != self.playback.url.as_ref() {
+                self.status_message = Some("Chapters only available for playing episode".to_string());
+                return;
+            }
+
+            // Try to open chapters popup
             self.selected_chapter_index = 0;
-            // Always clear cache first to prevent showing stale chapters
             self.cached_chapters = None;
 
             // Fetch chapters when opening popup
@@ -344,28 +360,24 @@ impl App {
                 .and_then(|p| p.episodes.get(self.selected_episode_index))
             {
                 log::debug!("Opening chapters for episode: {}", episode.title);
-                if let Some(chapters_url) = &episode.chapters_url {
-                    log::debug!("Found chapters_url: {}", chapters_url);
-                    use crate::chapters;
-                    match chapters::fetch_chapters(chapters_url) {
-                        Ok(chapters) => {
-                            log::debug!("Cached {} chapters", chapters.chapters.len());
-                            self.cached_chapters = Some(chapters);
-                        }
-                        Err(e) => {
-                            log::error!("Failed to fetch chapters: {}", e);
-                            self.cached_chapters = None;
-                        }
+                use crate::chapters;
+                let chapters_url = episode.chapters_url.as_deref();
+
+                match chapters::get_chapters(audio_path, chapters_url) {
+                    Ok(chapters) => {
+                        log::debug!("Loaded {} chapters", chapters.chapters.len());
+                        self.cached_chapters = Some(chapters);
+                        self.show_chapters = true; // Only show if we found chapters
                     }
-                } else {
-                    log::debug!("Episode has no chapters_url");
+                    Err(e) => {
+                        log::debug!("No chapters available: {}", e);
+                        self.status_message = Some("No chapters available".to_string());
+                    }
                 }
             } else {
                 log::error!("Could not find selected episode");
+                self.status_message = Some("No episode selected".to_string());
             }
-        } else {
-            // Clear cache when closing
-            self.cached_chapters = None;
         }
     }
 

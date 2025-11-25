@@ -1,4 +1,5 @@
 use crate::app::App;
+use crate::playback::Player;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
@@ -43,7 +44,7 @@ pub enum Action {
 }
 
 impl Action {
-    pub fn execute(&self, app: &mut App) {
+    pub fn execute(&self, app: &mut App, player: &Player) {
         match self {
             Action::Quit => {
                 // Handled in main loop
@@ -134,7 +135,8 @@ impl Action {
                 app.show_info = !app.show_info;
             }
             Action::ShowChapters => {
-                app.toggle_chapters();
+                let audio_path = player.get_temp_file_path();
+                app.toggle_chapters(audio_path.as_deref());
             }
         }
     }
