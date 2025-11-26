@@ -81,6 +81,8 @@ impl KeyMap {
         self.bind(KeyBinding::new(KeyCode::Right), Action::SeekForward);
         self.bind(KeyBinding::new(KeyCode::Char('h')), Action::SeekBackward);
         self.bind(KeyBinding::new(KeyCode::Char('l')), Action::SeekForward);
+        self.bind(KeyBinding::new(KeyCode::Char('[')), Action::SpeedDown);
+        self.bind(KeyBinding::new(KeyCode::Char(']')), Action::SpeedUp);
     }
 }
 

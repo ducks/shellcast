@@ -352,6 +352,22 @@ fn handle_normal_key(
                     }
                 }
             }
+            Action::SpeedUp => {
+                if app.playback.start.is_some() {
+                    let current_speed = player.get_speed();
+                    let new_speed = (current_speed + 0.25).min(3.0); // Cap at 3x
+                    player.set_speed(new_speed);
+                    app.status_message = Some(format!("Speed: {:.2}x", new_speed));
+                }
+            }
+            Action::SpeedDown => {
+                if app.playback.start.is_some() {
+                    let current_speed = player.get_speed();
+                    let new_speed = (current_speed - 0.25).max(0.5); // Minimum 0.5x
+                    player.set_speed(new_speed);
+                    app.status_message = Some(format!("Speed: {:.2}x", new_speed));
+                }
+            }
             Action::RefreshFeed => {
                 if let Some(podcast) = app.podcasts.get_mut(app.selected_podcast_index) {
                     match feed::refresh_feed(podcast) {
