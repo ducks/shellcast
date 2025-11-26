@@ -246,4 +246,26 @@ impl Player {
     pub fn get_temp_file_path(&self) -> Option<std::path::PathBuf> {
         self.temp_file.as_ref().map(|f| f.path().to_path_buf())
     }
+
+    /// Set playback speed (1.0 = normal, 0.5 = half speed, 2.0 = double speed)
+    pub fn set_speed(&self, speed: f32) {
+        if let Ok(sink_guard) = self.sink.lock() {
+            if let Some(sink) = sink_guard.as_ref() {
+                sink.set_speed(speed);
+                log::debug!("Playback speed set to {}x", speed);
+            }
+        }
+    }
+
+    /// Get current playback speed
+    pub fn get_speed(&self) -> f32 {
+        if let Ok(sink_guard) = self.sink.lock() {
+            sink_guard
+                .as_ref()
+                .map(|s| s.speed())
+                .unwrap_or(1.0)
+        } else {
+            1.0
+        }
+    }
 }

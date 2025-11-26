@@ -25,6 +25,8 @@ pub enum Action {
     Stop,
     SeekForward,
     SeekBackward,
+    SpeedUp,
+    SpeedDown,
 
     // Screen/Mode
     SwitchToBrowse,
@@ -114,6 +116,12 @@ impl Action {
                 // Handled in main loop (needs player reference)
             }
             Action::SeekBackward => {
+                // Handled in main loop (needs player reference)
+            }
+            Action::SpeedUp => {
+                // Handled in main loop (needs player reference)
+            }
+            Action::SpeedDown => {
                 // Handled in main loop (needs player reference)
             }
             Action::SwitchToBrowse => {
