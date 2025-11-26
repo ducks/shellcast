@@ -21,16 +21,22 @@ fn html_to_text(html: &str) -> String {
 pub fn fetch_and_parse(url: &str) -> Result<Podcast, String> {
     log::debug!("Fetching feed from: {}", url);
 
-    let response = reqwest::blocking::get(url)
+    // Fetch the feed once and store the bytes
+    let bytes = reqwest::blocking::get(url)
         .map_err(|e| {
             log::error!("Failed to fetch feed {}: {}", url, e);
             format!("Failed to fetch feed: {}", e)
+        })?
+        .bytes()
+        .map_err(|e| {
+            log::error!("Failed to read feed bytes: {}", e);
+            format!("Failed to read feed: {}", e)
         })?;
 
-    log::debug!("Feed fetched successfully, attempting RSS parse...");
+    log::debug!("Feed fetched successfully ({} bytes), attempting RSS parse...", bytes.len());
 
     // Try parsing as RSS first
-    let reader = BufReader::new(response);
+    let reader = BufReader::new(&bytes[..]);
     match Channel::read_from(reader) {
         Ok(channel) => {
             log::debug!("Successfully parsed as RSS feed");
@@ -41,14 +47,9 @@ pub fn fetch_and_parse(url: &str) -> Result<Podcast, String> {
         }
     }
 
-    // Try parsing as Atom
+    // Try parsing as Atom using the same bytes
     log::debug!("Attempting Atom parse...");
-    let response = reqwest::blocking::get(url)
-        .map_err(|e| {
-            log::error!("Failed to re-fetch feed for Atom: {}", e);
-            format!("Failed to fetch feed: {}", e)
-        })?;
-    let reader = BufReader::new(response);
+    let reader = BufReader::new(&bytes[..]);
     match AtomFeed::read_from(reader) {
         Ok(feed) => {
             log::debug!("Successfully parsed as Atom feed");
