@@ -10,7 +10,7 @@ mod playback;
 mod theme;
 mod ui;
 
-use app::{App, InputMode};
+use app::{App, AppEvent, InputMode};
 use actions::Action;
 use keybindings::{KeyMap, KeyBinding};
 use playback::Player;
@@ -24,52 +24,12 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use simplelog::*;
 use std::fs::File;
 use std::io::{Result, stdout};
+use std::sync::mpsc;
 
-fn handle_adding_feed_input(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Char(c) => {
-            app.input_buffer.push(c);
-        }
-        KeyCode::Backspace => {
-            app.input_buffer.pop();
-        }
-        KeyCode::Enter => {
-            let url = app.input_buffer.clone();
-            app.input_mode = InputMode::Normal;
-            app.input_buffer.clear();
-
-            // Fetch and parse feed
-            match feed::fetch_and_parse(&url) {
-                Ok(podcast) => {
-                    app.status_message = Some(format!("Added: {}", podcast.title));
-                    app.add_podcast(podcast);
-                }
-                Err(e) => {
-                    app.status_message = Some(format!("Error: {}", e));
-                }
-            }
-        }
-        KeyCode::Esc => {
-            app.cancel_input();
-        }
-        _ => {}
-    }
-}
-
-fn handle_search_input(app: &mut App, key: KeyEvent) {
-    match key.code {
-        KeyCode::Char(c) => {
-            app.browse.search_query.push(c);
-        }
-        KeyCode::Backspace => {
-            app.browse.search_query.pop();
-        }
-        KeyCode::Enter => {
-            let query = app.browse.search_query.clone();
-            app.cancel_search();
-
-            // Perform search
-            match browse::search_podcasts(&query) {
+fn handle_app_event(app: &mut App, event: AppEvent) {
+    match event {
+        AppEvent::SearchComplete(result) => {
+            match result {
                 Ok(results) => {
                     app.browse.search_results = results;
                     app.browse.selected_index = 0;
@@ -81,6 +41,71 @@ fn handle_search_input(app: &mut App, key: KeyEvent) {
                 }
             }
         }
+        AppEvent::FeedLoaded(result) => {
+            match result {
+                Ok(podcast) => {
+                    app.status_message = Some(format!("Added: {}", podcast.title));
+                    app.add_podcast(podcast);
+                }
+                Err(e) => {
+                    app.status_message = Some(format!("Error: {}", e));
+                }
+            }
+        }
+        AppEvent::PlaybackReady => {
+            // Playback buffer is ready, player will handle it
+        }
+    }
+}
+
+fn handle_adding_feed_input(app: &mut App, key: KeyEvent, tx: &mpsc::Sender<AppEvent>) {
+    match key.code {
+        KeyCode::Char(c) => {
+            app.input_buffer.push(c);
+        }
+        KeyCode::Backspace => {
+            app.input_buffer.pop();
+        }
+        KeyCode::Enter => {
+            let url = app.input_buffer.clone();
+            app.input_mode = InputMode::Normal;
+            app.input_buffer.clear();
+            app.status_message = Some("Loading feed...".to_string());
+
+            // Spawn background thread to fetch and parse feed
+            let tx = tx.clone();
+            std::thread::spawn(move || {
+                let result = feed::fetch_and_parse(&url);
+                let _ = tx.send(AppEvent::FeedLoaded(result));
+            });
+        }
+        KeyCode::Esc => {
+            app.cancel_input();
+        }
+        _ => {}
+    }
+}
+
+fn handle_search_input(app: &mut App, key: KeyEvent, tx: &mpsc::Sender<AppEvent>) {
+    match key.code {
+        KeyCode::Char(c) => {
+            app.browse.search_query.push(c);
+        }
+        KeyCode::Backspace => {
+            app.browse.search_query.pop();
+        }
+        KeyCode::Enter => {
+            let query = app.browse.search_query.clone();
+            app.cancel_search();
+            app.status_message = Some("Searching...".to_string());
+
+            // Spawn background thread to perform search
+            let tx = tx.clone();
+            std::thread::spawn(move || {
+                let result = browse::search_podcasts(&query);
+                let _ = tx.send(AppEvent::SearchComplete(result));
+            });
+        }
         KeyCode::Esc => {
             app.cancel_search();
         }
@@ -88,7 +113,7 @@ fn handle_search_input(app: &mut App, key: KeyEvent) {
     }
 }
 
-fn handle_browse_screen_key(app: &mut App, key: KeyEvent) -> bool {
+fn handle_browse_screen_key(app: &mut App, key: KeyEvent, tx: &mpsc::Sender<AppEvent>) -> bool {
     match key.code {
         KeyCode::Char('/') => {
             app.start_search();
@@ -98,16 +123,15 @@ fn handle_browse_screen_key(app: &mut App, key: KeyEvent) -> bool {
             // Subscribe to selected podcast
             if let Some(result) = app.browse.selected_result() {
                 let feed_url = result.feed_url.clone();
-                match feed::fetch_and_parse(&feed_url) {
-                    Ok(podcast) => {
-                        app.status_message = Some(format!("Subscribed: {}", podcast.title));
-                        app.add_podcast(podcast);
-                        app.screen = app::AppScreen::Podcasts;
-                    }
-                    Err(e) => {
-                        app.status_message = Some(format!("Error: {}", e));
-                    }
-                }
+                app.status_message = Some("Loading feed...".to_string());
+                app.screen = app::AppScreen::Podcasts;
+
+                // Spawn background thread to fetch and parse feed
+                let tx = tx.clone();
+                std::thread::spawn(move || {
+                    let result = feed::fetch_and_parse(&feed_url);
+                    let _ = tx.send(AppEvent::FeedLoaded(result));
+                });
             }
             true
         }
@@ -390,22 +414,30 @@ fn main() -> Result<()> {
     // Initialize audio player
     let mut player = Player::new().expect("Failed to initialize audio player");
 
+    // Create channel for background thread communication
+    let (tx, rx) = mpsc::channel::<AppEvent>();
+
     loop {
         terminal.draw(|f| ui::draw_ui(f, &app, &player, &theme))?;
+
+        // Check for background events (non-blocking)
+        while let Ok(event) = rx.try_recv() {
+            handle_app_event(&mut app, event);
+        }
 
         if event::poll(std::time::Duration::from_millis(50))?
             && let Event::Key(key) = event::read()?
         {
             match app.input_mode {
                 InputMode::AddingFeed => {
-                    handle_adding_feed_input(&mut app, key);
+                    handle_adding_feed_input(&mut app, key, &tx);
                 }
                 InputMode::Searching => {
-                    handle_search_input(&mut app, key);
+                    handle_search_input(&mut app, key, &tx);
                 }
                 InputMode::Normal => {
                     // Handle browse-specific keys first
-                    if app.is_browse_screen() && handle_browse_screen_key(&mut app, key) {
+                    if app.is_browse_screen() && handle_browse_screen_key(&mut app, key, &tx) {
                         continue;
                     }
 

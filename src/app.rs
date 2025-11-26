@@ -1,7 +1,15 @@
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
-use crate::browse::BrowseState;
+use crate::browse::{BrowseState, SearchResult};
 use crate::chapters::ChapterList;
+
+/// Events sent from background threads to the main UI thread
+#[derive(Debug)]
+pub enum AppEvent {
+    SearchComplete(Result<Vec<SearchResult>, String>),
+    FeedLoaded(Result<Podcast, String>),
+    PlaybackReady,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Podcast {
