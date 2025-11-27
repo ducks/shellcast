@@ -24,6 +24,8 @@ A terminal-based podcast player written in Rust.
 - **Theming System** - Customizable color themes via TOML config (default, dark, gruvbox, or custom)
 - **Help Screen** - Built-in keybindings reference (? key)
 - **Audio Playback** - Stream and play podcast episodes with seek controls (±30s)
+- **Playback Speed** - Adjust playback speed from 0.5x to 3.0x in 0.25x increments
+- **Resume Playback** - Automatically resume episodes from where you left off
 - **Played Status** - Mark episodes as played/unplayed, synced to disk
 - **Persistence** - Subscriptions and playback state saved automatically
 - **TUI Interface** - Clean terminal interface using ratatui
@@ -57,11 +59,12 @@ The binary will be available at `target/release/shellcast`.
 4. **Manual add** - Press `a` to add a podcast feed by URL
 5. Use `j/k` or arrow keys to navigate between podcasts and episodes
 6. Press `Tab` to switch between the podcast list and episode list
-7. Press `Space` to play an episode
+7. Press `Space` to play an episode (resumes from last position)
 8. Press `h/l` or arrow keys to seek backward/forward 30 seconds
-9. Press `m` to mark episodes as played/unplayed
-10. Press `1` to return to Podcasts view, `5` for Browse
-11. Press `q` to quit
+9. Press `[/]` to decrease/increase playback speed (0.5x - 3.0x)
+10. Press `m` to mark episodes as played/unplayed
+11. Press `1` to return to Podcasts view, `5` for Browse
+12. Press `q` to quit
 
 Podcasts and playback status are automatically saved to `~/.config/shellcast/podcasts.json`.
 
@@ -154,10 +157,12 @@ nix-shell
 - `Enter` - Subscribe to selected search result
 
 ### Playback
-- `Space` - Play/pause selected episode
+- `Space` - Play/pause selected episode (resumes from last position)
 - `s` - Stop playback
 - `h` or Left Arrow - Seek backward 30 seconds
 - `l` or Right Arrow - Seek forward 30 seconds
+- `[` - Decrease playback speed (min 0.5x)
+- `]` - Increase playback speed (max 3.0x)
 
 ### Management
 - `m` - Mark episode as played/unplayed
@@ -195,14 +200,12 @@ nix-shell
 - [x] **Publish dates** (shown in episode list)
 - [x] **Chapter support** (Podcasting 2.0 chapters with navigation)
 - [x] **Theming system** (TOML config with built-in and custom themes)
-
-### In Progress
-- [ ] Better error handling and user feedback
-- [ ] Resume playback where you left off
+- [x] **Resume playback** (automatically resume from last position)
+- [x] **Speed control** (0.5x - 3.0x playback speed with 0.25x increments)
 
 ### Planned Enhancements
+- [ ] Better error handling and user feedback
 - [ ] Episode download manager for offline listening
-- [ ] Speed control (1.5x, 2x playback)
 - [ ] Episode queue
 - [ ] Episode artwork display
 - [ ] OPML import/export
