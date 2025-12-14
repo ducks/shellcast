@@ -1,6 +1,6 @@
 [package]
 name = "shellcast"
-version = "0.1.0"
+version = "20251214.0.0"
 edition = "2021"
 authors = ["Jake Goldsborough <github@pancakes.email>"]
 description = "A terminal-based podcast player with discovery, playback controls, chapters, and theming"
