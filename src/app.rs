@@ -278,10 +278,11 @@ impl App {
     }
 
     pub fn move_episode_down(&mut self) {
-        if let Some(podcast) = self.selected_podcast()
-            && self.selected_episode_index < podcast.episodes.len().saturating_sub(1) {
+        if let Some(podcast) = self.selected_podcast() {
+            if self.selected_episode_index < podcast.episodes.len().saturating_sub(1) {
                 self.selected_episode_index += 1;
             }
+        }
     }
 
     pub fn switch_focus(&mut self) {

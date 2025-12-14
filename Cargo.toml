@@ -1,7 +1,15 @@
 [package]
 name = "shellcast"
-version = "20251125.0.1"
-edition = "2024"
+version = "0.1.0"
+edition = "2021"
+authors = ["Jake Goldsborough <github@pancakes.email>"]
+description = "A terminal-based podcast player with discovery, playback controls, chapters, and theming"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ducks/shellcast"
+homepage = "https://github.com/ducks/shellcast"
+readme = "README.md"
+keywords = ["podcast", "audio", "tui", "terminal", "rss"]
+categories = ["command-line-utilities", "multimedia::audio"]
 
 [dependencies]
 atom_syndication = "0.12.7"

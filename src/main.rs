@@ -441,9 +441,8 @@ fn main() -> Result<()> {
             handle_app_event(&mut app, event);
         }
 
-        if event::poll(std::time::Duration::from_millis(50))?
-            && let Event::Key(key) = event::read()?
-        {
+        if event::poll(std::time::Duration::from_millis(50))? {
+            if let Event::Key(key) = event::read()? {
             match app.input_mode {
                 InputMode::AddingFeed => {
                     handle_adding_feed_input(&mut app, key, &tx);
@@ -462,6 +461,7 @@ fn main() -> Result<()> {
                         break;
                     }
                 }
+            }
             }
         }
 
